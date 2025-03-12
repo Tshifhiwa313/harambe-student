@@ -4,7 +4,7 @@ services:
     name: harambee-housing
     env: php
     buildCommand: composer install
-    startCommand: php -S 0.0.0.0:$PORT
+    startCommand: php -S 0.0.0.0:$PORT -t .
     envVars:
       - key: PORT
-        value: 5000
+        value: 8000

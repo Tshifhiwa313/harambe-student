@@ -1,8 +1,12 @@
 {
+    "name": "harambee-student/housing-management",
+    "description": "Harambee Student Housing Management System",
+    "type": "project",
     "require": {
         "phpmailer/phpmailer": "^6.8",
         "ext-pdo": "*",
-        "ext-pdo_sqlite": "*"
+        "ext-pdo_sqlite": "*",
+        "php": "^8.0"
     },
     "require-dev": {
         "heroku/heroku-buildpack-php": "*"
