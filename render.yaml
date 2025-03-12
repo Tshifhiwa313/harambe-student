@@ -19,3 +19,12 @@ services:
       - "**/*.js"
       ignoredPaths:
       - "pyproject.toml"
+    buildFilter:
+      paths:
+      - "**/*.php"
+      - "**/*.json"
+      - "**/*.html"
+      - "**/*.css"
+      - "**/*.js"
+      ignoredPaths:
+      - "pyproject.toml"
