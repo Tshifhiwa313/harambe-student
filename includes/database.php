@@ -7,15 +7,21 @@ require_once 'config.php';
  */
 function connectDB() {
     try {
+        // Get database path - ensure it's writable in production
+        $db_path = DB_TYPE === 'sqlite' ? __DIR__ . '/../' . DB_NAME : '';
+
+        // Create database connection based on DB type
         if (DB_TYPE === 'sqlite') {
-            $pdo = new PDO('sqlite:' . DB_PATH);
+            $pdo = new PDO('sqlite:' . $db_path);
         } else {
-            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+            $dsn = DB_TYPE . ':host=' . DB_HOST . ';dbname=' . DB_NAME;
             $pdo = new PDO($dsn, DB_USER, DB_PASS);
         }
-        
+
+        // Set PDO attributes
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
         return $pdo;
     } catch (PDOException $e) {
         die("Database connection failed: " . $e->getMessage());
@@ -70,13 +76,13 @@ function fetchAll($sql, $params = []) {
 function insert($table, $data) {
     $columns = implode(', ', array_keys($data));
     $placeholders = implode(', ', array_fill(0, count($data), '?'));
-    
+
     $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
-    
+
     $pdo = connectDB();
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array_values($data));
-    
+
     return $pdo->lastInsertId();
 }
 
@@ -91,10 +97,10 @@ function insert($table, $data) {
 function update($table, $data, $whereColumn, $whereValue) {
     $setClause = implode(' = ?, ', array_keys($data)) . ' = ?';
     $sql = "UPDATE $table SET $setClause WHERE $whereColumn = ?";
-    
+
     $values = array_values($data);
     $values[] = $whereValue;
-    
+
     $stmt = executeQuery($sql, $values);
     return $stmt->rowCount();
 }

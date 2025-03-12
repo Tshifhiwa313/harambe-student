@@ -1,3 +1,50 @@
+
+<?php
+// Set environment variables based on environment
+$is_production = (getenv('RENDER') == 'true');
+
+// Database configuration
+define('DB_TYPE', 'sqlite');
+define('DB_HOST', '');
+define('DB_NAME', 'database.sqlite');
+define('DB_USER', '');
+define('DB_PASS', '');
+
+// Site URL and paths
+define('SITE_URL', $is_production ? getenv('RENDER_EXTERNAL_URL') : 'http://localhost:5000');
+define('ROOT_PATH', dirname(__DIR__));
+define('UPLOADS_PATH', ROOT_PATH . '/uploads');
+
+// User roles
+define('ROLE_ADMIN', 'admin');
+define('ROLE_STAFF', 'staff');
+define('ROLE_STUDENT', 'student');
+
+// Email configuration
+define('MAIL_HOST', getenv('MAIL_HOST') ?: 'smtp.example.com');
+define('MAIL_PORT', getenv('MAIL_PORT') ?: 587);
+define('MAIL_USERNAME', getenv('MAIL_USERNAME') ?: 'user@example.com');
+define('MAIL_PASSWORD', getenv('MAIL_PASSWORD') ?: 'password');
+define('MAIL_FROM', getenv('MAIL_FROM') ?: 'noreply@example.com');
+define('MAIL_FROM_NAME', getenv('MAIL_FROM_NAME') ?: 'Harambee Housing');
+
+// Twilio configuration for SMS
+define('TWILIO_SID', getenv('TWILIO_SID') ?: '');
+define('TWILIO_TOKEN', getenv('TWILIO_TOKEN') ?: '');
+define('TWILIO_PHONE', getenv('TWILIO_PHONE') ?: '');
+
+// Error reporting
+if ($is_production) {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+} else {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+}
+
+// Timezone
+date_default_timezone_set('Africa/Johannesburg');
+
 <?php
 // Configuration settings for the application
 session_start();
