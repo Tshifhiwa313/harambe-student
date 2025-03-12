@@ -38,10 +38,17 @@ function registerUser($username, $email, $password, $role, $userData = []) {
     
     // Create profile based on role
     if ($userId && $role == ROLE_STUDENT) {
-        insert('student_profiles', [
+        $profileData = [
             'user_id' => $userId,
+            'student_number' => $userData['student_number'] ?? '',
+            'college' => $userData['college'] ?? '',
             'created_at' => date('Y-m-d H:i:s')
-        ]);
+        ];
+        
+        // Remove these fields from userData to avoid duplicate storage
+        unset($userData['student_number'], $userData['college']);
+        
+        insert('student_profiles', $profileData);
     }
     
     return $userId;
