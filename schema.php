@@ -48,7 +48,8 @@ function createTables() {
     $pdo->exec("CREATE TABLE IF NOT EXISTS student_profiles (
         id INTEGER PRIMARY KEY " . (DB_TYPE === 'mysql' ? "AUTO_INCREMENT" : "AUTOINCREMENT") . ",
         user_id INTEGER NOT NULL,
-        student_number VARCHAR(50),
+        student_number VARCHAR(50) NOT NULL,
+        college VARCHAR(100) NOT NULL,
         date_of_birth DATE,
         gender VARCHAR(10),
         id_number VARCHAR(20),

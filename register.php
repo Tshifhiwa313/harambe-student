@@ -23,9 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone = $_POST['phone'] ?? '';
     $first_name = $_POST['first_name'] ?? '';
     $last_name = $_POST['last_name'] ?? '';
+    $student_number = $_POST['student_number'] ?? '';
+    $college = $_POST['college'] ?? '';
     
     // Validate input
-    if (empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
+    if (empty($username) || empty($email) || empty($password) || empty($confirm_password) || empty($student_number) || empty($college)) {
         $error = 'Please fill all required fields';
     } elseif ($password !== $confirm_password) {
         $error = 'Passwords do not match';
@@ -38,7 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userData = [
             'phone' => $phone,
             'first_name' => $first_name,
-            'last_name' => $last_name
+            'last_name' => $last_name,
+            'student_number' => $student_number,
+            'college' => $college
         ];
         
         // Register the user as a student
@@ -118,6 +122,35 @@ include 'includes/header.php';
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-phone"></i></span>
                         <input type="tel" class="form-control" id="phone" name="phone" placeholder="Enter your phone number">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="student_number" class="form-label">Student Number *</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                        <input type="text" class="form-control" id="student_number" name="student_number" placeholder="Enter your student number" required>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="college" class="form-label">College/Institution *</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-university"></i></span>
+                        <select class="form-select" id="college" name="college" required>
+                            <option value="" selected disabled>Select your college/institution</option>
+                            <option value="University of Johannesburg">University of Johannesburg</option>
+                            <option value="University of the Witwatersrand">University of the Witwatersrand</option>
+                            <option value="University of Pretoria">University of Pretoria</option>
+                            <option value="Tshwane University of Technology">Tshwane University of Technology</option>
+                            <option value="UNISA">UNISA</option>
+                            <option value="Cape Peninsula University of Technology">Cape Peninsula University of Technology</option>
+                            <option value="University of Cape Town">University of Cape Town</option>
+                            <option value="Stellenbosch University">Stellenbosch University</option>
+                            <option value="University of KwaZulu-Natal">University of KwaZulu-Natal</option>
+                            <option value="Durban University of Technology">Durban University of Technology</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
                 </div>
                 
