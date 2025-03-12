@@ -1,11 +1,9 @@
-
 services:
   - type: web
     name: harambe-student
-    env: php
+    env: docker
     branch: main
-    buildCommand: composer install
-    startCommand: vendor/bin/heroku-php-apache2 .
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: PHP_VERSION
         value: 8.0
@@ -13,13 +11,3 @@ services:
         value: 8000
       - key: DATABASE_URL
         sync: false
-    buildFilter:
-      paths:
-        - "**/*.php"
-        - "**/*.json"
-        - "**/*.html"
-        - "**/*.css"
-        - "**/*.js"
-      ignoredPaths:
-        - "node_modules/"
-        - "tests/"
