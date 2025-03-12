@@ -31,7 +31,7 @@ args = "php -S 0.0.0.0:5000"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "php -S 0.0.0.0:5000"]
+run = ["sh", "-c", "php -S 0.0.0.0:8000"]
 build = ["sh", "-c", "composer install"]
 
 [[ports]]
