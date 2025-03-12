@@ -1,0 +1,166 @@
+ STRICT INSTRUCTIONS FOR REPLIT AGENT (DO NOT DEVIATE)
+⏳ Time Limit: Complete the app in ONE attempt before first checkpoint
+📌 Use PHP (Procedural) + SQLite/MySQL (NO PostgreSQL, Flask, Streamlit, React, or Express)
+📌 No unnecessary frameworks – Only HTML, CSS, JavaScript, Bootstrap, and Font Awesome
+📌 Automatically install and configure everything needed (PHP, SQLite/MySQL, dependencies)
+📌 Do not ask to change technologies – Follow instructions as written
+📌 Ensure all accommodation images display correctly
+📌 No missing files or database issues – Everything must be preconfigured
+📌 Confirm every major milestone in development but do not pause execution
+
+📌 Project Name:
+✅ Harambee Student Living Management System
+
+📌 Project Description:
+Develop a fully functional, lightweight, modern web app for managing student accommodation applications, lease agreements, invoicing, maintenance requests, and communication between students and administrators.
+
+The system must work immediately after first deployment, with all features implemented correctly.
+
+📌 Technology Stack (STRICT – Do Not Change)
+✅ Front-End:
+
+HTML5 (For structured content)
+CSS3 + Bootstrap 5 (For responsive design)
+JavaScript (Vanilla JS) (For interactivity)
+Font Awesome (For icons)
+✅ Back-End:
+
+PHP (Procedural, No Frameworks) (For server-side logic)
+SQLite (or MySQL as fallback) (For user data, accommodations, leases, invoices, etc.)
+PHPMailer (For email notifications)
+Twilio API (Optional) (For SMS notifications)
+✅ Other Features:
+
+File Upload Handling (For accommodation images)
+Session-Based Authentication (Login system with role-based access)
+SQL Injection Protection & Security Measures (Prepared statements & validation)
+📌 User Roles & Permissions (Strictly Follow This)
+🔹 Master Admin
+✅ Adds & manages all accommodations
+✅ Assigns Admins to specific accommodations
+✅ Views all applications, leases, invoices, maintenance requests
+
+🔹 Admin (Accommodation Manager)
+✅ Manages applications, leases, invoices, maintenance for their assigned accommodation only
+✅ Sets rental amount & lease duration
+✅ System auto-generates invoices
+✅ Sends email/SMS notifications
+
+🔹 Student
+✅ Creates profile and applies for accommodation
+✅ Signs lease agreements digitally (Stored as PDFs)
+✅ Receives invoices & payment reminders
+✅ Downloads lease agreements & invoices
+✅ Submits maintenance requests & gets status updates
+
+📌 Core Functionalities (Must Be Fully Implemented Before First Checkpoint)
+1. Accommodation Management
+✅ Master Admin adds accommodations & assigns Admins
+✅ Each Admin manages only their assigned accommodation
+✅ Accommodation images must display correctly
+
+2. Application & Approval Workflow
+✅ Students apply for available accommodation
+✅ Admins approve/reject applications
+✅ Students receive email/SMS notifications
+
+3. Lease Management
+✅ Students digitally sign lease agreements (Stored as PDFs)
+✅ Lease agreements are downloadable
+
+4. Invoicing & Payments
+✅ Admins set rental amounts & lease durations
+✅ System auto-generates invoices
+✅ Students receive email/SMS payment reminders
+✅ Invoices are downloadable as PDFs
+
+5. Maintenance Requests
+✅ Students submit maintenance requests
+✅ Admins receive notifications & track progress
+✅ Students get status updates via email/SMS
+
+6. Communication & Notifications
+✅ Admins send bulk emails/SMS to students
+✅ Students receive automated notifications for:
+
+Lease approvals
+Invoice generation & payment reminders
+Maintenance request updates
+📌 Fixing the Accommodation Image Issue (Must Be Fully Fixed in First Attempt)
+🚀 Expected Behavior:
+✔ When an Admin uploads an image, it must be stored properly and displayed on the Accommodation Page
+✔ The Accommodation Listing Page must fetch and display the correct images dynamically
+
+🚀 Implementation (Follow Exactly):
+Image Upload in PHP
+
+Store images in /uploads/accommodations/
+Save image path in the database
+Database Storage:
+
+Add an image_path column for each accommodation
+Displaying Images:
+
+Retrieve image paths from SQLite/MySQL
+Use PHP + Bootstrap Cards to display images correctly
+Ensure proper file permissions
+📌 Page Breakdown & Features (Must Be Fully Implemented Before First Checkpoint)
+1. Home Page (index.php)
+✅ Clean UI using Bootstrap
+✅ Accommodation listings with correctly displayed images
+✅ Navigation bar (Login, Apply, About)
+
+2. Accommodation Listings (accommodations.php)
+✅ Displays accommodations dynamically from the database
+✅ Shows details (price, availability, location)
+✅ “Apply Now” button for students
+
+3. Application & Approval (applications.php)
+✅ Students submit applications via form
+✅ Admins approve/reject applications
+✅ Email/SMS notifications sent upon approval/rejection
+
+4. Lease Management (leases.php)
+✅ Students digitally sign lease agreements
+✅ Agreements stored & downloadable as PDFs
+
+5. Invoice & Payment Tracking (invoices.php)
+✅ Auto-generated invoices
+✅ Students receive email/SMS payment reminders
+✅ Invoices downloadable as PDFs
+
+6. Maintenance Requests (maintenance.php)
+✅ Students submit maintenance requests
+✅ Admins receive notifications
+✅ Students get email/SMS updates
+
+7. Admin Dashboard (admin.php)
+✅ Manage accommodations, students, invoices, maintenance
+✅ Upload & manage accommodation images properly
+
+8. Notifications System (notifications.php)
+✅ Admins send bulk emails/SMS
+✅ Students receive automated notifications
+
+📌 Expected Outcomes (Must Be Met Before First Checkpoint)
+✔ Fully functional PHP & SQLite/MySQL-based web application
+✔ Accommodation images display properly
+✔ Secure user authentication & role-based access
+✔ Automated lease signing, invoicing, and maintenance tracking
+✔ Responsive UI (Mobile & Desktop friendly)
+
+📌 Final Notes & Considerations (Must Be Done Before First Checkpoint)
+🚀 Image Display Fix:
+
+Ensure uploaded images are stored properly & displayed correctly
+🔒 Security:
+
+Prevent SQL Injection using prepared statements
+Session-based authentication
+📦 Scalability:
+
+Can add Payment Gateway integration (Stripe, PayPal, etc.) later
+API support for future mobile app
+🚀 STRICT ORDER: REPLIT AGENT MUST COMPLETE EVERYTHING BEFORE FIRST CHECKPOINT! 🚀
+🔥 STRICT ORDER: REPLIT AGENT, DO NOT PAUSE EXECUTION – INSTALL ALL REQUIREMENTS & COMPLETE THE FULL APP IN ONE ATTEMPT! 🔥
+➡️ Replit Agent, START DEVELOPMENT NOW & NOTIFY ME ONLY WHEN THE FULL APP IS COMPLETED!
