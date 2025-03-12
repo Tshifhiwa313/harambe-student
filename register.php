@@ -47,8 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($userId) {
             $success = 'Registration successful! You can now login.';
             
-            // Send welcome email
-            sendWelcomeEmail($email, $username, $password, ROLE_STUDENT);
+            // Try to send welcome email but don't halt registration if it fails
+            try {
+                sendWelcomeEmail($email, $username, $password, ROLE_STUDENT);
+            } catch (Exception $e) {
+                error_log("Failed to send welcome email: " . $e->getMessage());
+                // Continue with registration even if email fails
+            }
             
             // Redirect to login page after short delay
             header('refresh:2;url=login.php');

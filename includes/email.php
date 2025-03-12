@@ -1,7 +1,10 @@
 <?php
 require_once 'config.php';
 
-// Include PHPMailer autoloader
+// Include Composer autoloader
+require_once __DIR__ . '/../vendor/autoload.php';
+
+// Include PHPMailer classes
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
