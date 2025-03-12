@@ -4,10 +4,37 @@ require_once 'includes/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/authentication.php';
 
-// Create database tables if they don't exist
-if (!tableExists('users')) {
-    header('Location: schema.php');
-    exit;
+// Function to check if database is properly set up
+function isDatabaseFullySetup() {
+    try {
+        $pdo = connectDB();
+        
+        // Check for the schema_version table as a marker of a complete setup
+        if (DB_TYPE === 'sqlite') {
+            $stmt = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'");
+        } else {
+            $stmt = $pdo->query("SHOW TABLES LIKE 'schema_version'");
+        }
+        
+        return ($stmt && $stmt->fetchColumn() !== false);
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+// Check if database needs to be set up
+if (!isDatabaseFullySetup()) {
+    // Only redirect if we're not already coming from schema.php
+    if (!isset($_SERVER['HTTP_REFERER']) || strpos($_SERVER['HTTP_REFERER'], 'schema.php') === false) {
+        header('Location: schema.php');
+        exit;
+    }
+    
+    // If we're coming from schema.php but tables still don't exist, show an error
+    echo '<div class="alert alert-danger">
+            <strong>Error:</strong> Database setup failed. Please contact the administrator.
+            <br><a href="schema.php" class="btn btn-sm btn-primary mt-2">Try Setup Again</a>
+          </div>';
 }
 
 // Get featured accommodations

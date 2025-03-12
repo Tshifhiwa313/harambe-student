@@ -9,26 +9,27 @@ require_once 'includes/config.php';
  * @return bool Success status
  */
 function send_twilio_sms($to, $message) {
-    // Escape the message for shell execution
+    // Ensure the phone number has a plus sign for international format
+    if (substr($to, 0, 1) !== '+') {
+        $to = '+' . $to;
+    }
+    
+    // Escape the message and phone number for shell execution
     $escapedMessage = escapeshellarg($message);
     $escapedPhone = escapeshellarg($to);
     
-    // Execute the Python script
+    // Use our Python script to send the SMS
     $command = "python3 -c \"
-import os
-from twilio.rest import Client
+import sys
+sys.path.append('.')
+from send_message import send_twilio_message
 
-try:
-    client = Client(os.environ.get('TWILIO_ACCOUNT_SID'), os.environ.get('TWILIO_AUTH_TOKEN'))
-    message = client.messages.create(
-        body={$escapedMessage},
-        from_=os.environ.get('TWILIO_PHONE_NUMBER'),
-        to={$escapedPhone}
-    )
-    print('Success: ' + message.sid)
+result = send_twilio_message({$escapedPhone}, {$escapedMessage})
+if result:
+    print('Success: Message sent')
     exit(0)
-except Exception as e:
-    print('Error: ' + str(e))
+else:
+    print('Error: Failed to send message')
     exit(1)
 \"";
 
@@ -36,6 +37,11 @@ except Exception as e:
     $output = [];
     $returnVar = 0;
     exec($command, $output, $returnVar);
+    
+    // Log the output for debugging
+    if (!empty($output)) {
+        error_log("SMS sending output: " . implode("\n", $output));
+    }
     
     // Check if the command was successful
     if ($returnVar === 0) {

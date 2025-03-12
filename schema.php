@@ -6,6 +6,26 @@
 require_once 'includes/config.php';
 require_once 'includes/database.php';
 
+// Create a session flag to prevent redirect loops
+session_start();
+
+// Display header for the schema page
+echo "<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Database Setup</title>
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+</head>
+<body>
+    <div class='container mt-5'>
+        <div class='card'>
+            <div class='card-header bg-primary text-white'>
+                <h2>Database Setup</h2>
+            </div>
+            <div class='card-body'>";
+
 // Function to create tables
 function createTables() {
     $pdo = connectDB();
@@ -141,13 +161,92 @@ function createTables() {
                    VALUES ('admin', 'admin@example.com', '$hashedPassword', 1, '" . date('Y-m-d H:i:s') . "')");
     }
     
-    echo "Database tables created successfully!";
+    // Create a schema_version table to track database version
+    $pdo->exec("CREATE TABLE IF NOT EXISTS schema_version (
+        id INTEGER PRIMARY KEY " . (DB_TYPE === 'mysql' ? "AUTO_INCREMENT" : "AUTOINCREMENT") . ",
+        version VARCHAR(10) NOT NULL,
+        applied_at DATETIME NOT NULL
+    )");
+    
+    // Insert the current schema version
+    $pdo->exec("INSERT INTO schema_version (version, applied_at) 
+                VALUES ('1.0', '" . date('Y-m-d H:i:s') . "')");
+    
+    return true;
 }
 
-// Run the table creation
-createTables();
+// Function to check if database is properly set up
+function isDatabaseSetup() {
+    try {
+        $pdo = connectDB();
+        
+        // Check for the schema_version table as a marker of a complete setup
+        if (DB_TYPE === 'sqlite') {
+            $stmt = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'");
+        } else {
+            $stmt = $pdo->query("SHOW TABLES LIKE 'schema_version'");
+        }
+        
+        return $stmt->fetchColumn() !== false;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
 
-// Redirect to the index page
-header('Location: index.php');
-exit;
+// Main logic
+$setupComplete = false;
+$errorMessage = null;
+
+try {
+    // Check if tables already exist
+    if (isDatabaseSetup()) {
+        echo "<div class='alert alert-success'>Database is already set up. All tables exist.</div>";
+        $setupComplete = true;
+    } else {
+        // Create the tables
+        if (createTables()) {
+            echo "<div class='alert alert-success'>Database tables created successfully!</div>";
+            $setupComplete = true;
+            
+            // Force the creation of a file if using SQLite
+            if (DB_TYPE === 'sqlite') {
+                $pdo = connectDB();
+                $pdo->exec("PRAGMA journal_mode=WAL;"); // Set journaling mode
+                $pdo = null; // Close the connection to ensure file is written
+            }
+        } else {
+            echo "<div class='alert alert-danger'>Failed to create database tables.</div>";
+        }
+    }
+} catch (Exception $e) {
+    $errorMessage = $e->getMessage();
+    echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($errorMessage) . "</div>";
+}
+
+// Close HTML and provide navigation
+echo "
+            </div>
+            <div class='card-footer'>
+                <div class='d-flex justify-content-between'>
+                    <a href='/' class='btn btn-primary'>Go to Homepage</a>
+                    <a href='/login.php' class='btn btn-success'>Go to Login</a>
+                </div>
+            </div>
+        </div>";
+
+if ($setupComplete) {
+    echo "
+        <div class='alert alert-info mt-4'>
+            <h4>Default Admin Login</h4>
+            <p><strong>Username:</strong> admin</p>
+            <p><strong>Password:</strong> admin123</p>
+            <p class='text-danger'>Please change this password immediately after logging in!</p>
+        </div>";
+}
+
+echo "
+    </div>
+    <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'></script>
+</body>
+</html>";
 ?>

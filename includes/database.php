@@ -122,13 +122,17 @@ function tableExists($table) {
         $pdo = connectDB();
         if (DB_TYPE === 'sqlite') {
             $sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$table]);
+            return $stmt->fetchColumn() !== false;
         } else {
             $sql = "SHOW TABLES LIKE ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$table]);
+            return $stmt->rowCount() > 0;
         }
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$table]);
-        return $stmt->rowCount() > 0;
     } catch (PDOException $e) {
+        error_log("Error checking if table exists: " . $e->getMessage());
         return false;
     }
 }
