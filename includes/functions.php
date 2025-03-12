@@ -1,122 +1,81 @@
 <?php
-/**
- * Common utility functions
- * 
- * This file contains general utility functions used throughout the application.
- */
+require_once 'config.php';
+require_once 'database.php';
+require_once 'authentication.php';
 
 /**
- * Sanitize user input to prevent XSS attacks
- *
- * @param string $data The input data to sanitize
- * @return string The sanitized data
+ * Display a formatted error message
+ * @param string $message Error message
  */
-function sanitize($data) {
-    $data = trim($data);
-    $data = stripslashes($data);
-    $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
-    return $data;
+function showError($message) {
+    echo '<div class="alert alert-danger" role="alert">';
+    echo $message;
+    echo '</div>';
 }
 
 /**
- * Validate email format
- *
- * @param string $email The email to validate
- * @return bool True if valid, false otherwise
+ * Display a formatted success message
+ * @param string $message Success message
  */
-function isValidEmail($email) {
-    return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+function showSuccess($message) {
+    echo '<div class="alert alert-success" role="alert">';
+    echo $message;
+    echo '</div>';
 }
 
 /**
- * Validate phone number format
- *
- * @param string $phone The phone number to validate
- * @return bool True if valid, false otherwise
+ * Sanitize user input
+ * @param string $input User input
+ * @return string Sanitized input
  */
-function isValidPhone($phone) {
-    // Remove non-digit characters
-    $phone = preg_replace('/[^0-9]/', '', $phone);
+function sanitizeInput($input) {
+    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Format a date for display
+ * @param string $date Date in Y-m-d format
+ * @param string $format Output format
+ * @return string Formatted date
+ */
+function formatDate($date, $format = 'd F, Y') {
+    if (empty($date)) return '';
     
-    // Check if it has 10-15 digits
-    return preg_match('/^[0-9]{10,15}$/', $phone);
+    $dateObj = new DateTime($date);
+    return $dateObj->format($format);
 }
 
 /**
- * Validate date format (YYYY-MM-DD)
- *
- * @param string $date The date to validate
- * @return bool True if valid, false otherwise
+ * Format currency for display
+ * @param float $amount Amount
+ * @param string $symbol Currency symbol
+ * @return string Formatted currency
  */
-function isValidDate($date) {
-    $d = DateTime::createFromFormat('Y-m-d', $date);
-    return $d && $d->format('Y-m-d') === $date;
+function formatCurrency($amount, $symbol = 'R') {
+    return $symbol . ' ' . number_format($amount, 2, '.', ',');
 }
 
 /**
- * Generate a random string
- *
- * @param int $length The length of the string
- * @return string The random string
+ * Generate a unique filename for uploads
+ * @param string $originalName Original filename
+ * @return string Unique filename
  */
-function generateRandomString($length = 10) {
-    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $charactersLength = strlen($characters);
-    $randomString = '';
-    for ($i = 0; $i < $length; $i++) {
-        $randomString .= $characters[rand(0, $charactersLength - 1)];
-    }
-    return $randomString;
+function generateUniqueFilename($originalName) {
+    $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+    return uniqid() . '_' . time() . '.' . $extension;
 }
 
 /**
- * Format currency
- *
- * @param float $amount The amount to format
- * @return string The formatted amount
+ * Upload a file to the server
+ * @param array $file File from $_FILES array
+ * @param string $targetDir Target directory
+ * @param array $allowedTypes Allowed file types
+ * @param int $maxSize Maximum file size in bytes
+ * @return string|false Filename on success, false on failure
  */
-function formatCurrency($amount) {
-    return 'R ' . number_format($amount, 2);
-}
-
-/**
- * Format date
- *
- * @param string $date The date to format
- * @param string $format The format to use
- * @return string The formatted date
- */
-function formatDate($date, $format = 'd F Y') {
-    $d = new DateTime($date);
-    return $d->format($format);
-}
-
-/**
- * Calculate the difference between two dates in days
- *
- * @param string $date1 The first date
- * @param string $date2 The second date
- * @return int The difference in days
- */
-function dateDiffInDays($date1, $date2) {
-    $d1 = new DateTime($date1);
-    $d2 = new DateTime($date2);
-    $diff = $d1->diff($d2);
-    return abs($diff->days);
-}
-
-/**
- * Upload a file
- *
- * @param array $file The $_FILES array element
- * @param string $uploadDir The directory to upload to
- * @param array $allowedTypes The allowed MIME types
- * @param int $maxSize The maximum file size
- * @return string|false The file path on success, false on failure
- */
-function uploadFile($file, $uploadDir, $allowedTypes = ALLOWED_IMAGE_TYPES, $maxSize = MAX_FILE_SIZE) {
-    // Check if file was uploaded without errors
-    if ($file['error'] !== UPLOAD_ERR_OK) {
+function uploadFile($file, $targetDir, $allowedTypes = ['jpg', 'jpeg', 'png'], $maxSize = 5000000) {
+    // Check if file was uploaded
+    if (!isset($file['tmp_name']) || empty($file['tmp_name'])) {
         return false;
     }
     
@@ -126,305 +85,302 @@ function uploadFile($file, $uploadDir, $allowedTypes = ALLOWED_IMAGE_TYPES, $max
     }
     
     // Check file type
-    $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
-    $fileType = finfo_file($fileInfo, $file['tmp_name']);
-    finfo_close($fileInfo);
-    
+    $fileType = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     if (!in_array($fileType, $allowedTypes)) {
         return false;
     }
     
-    // Generate a unique filename
-    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $filename = uniqid() . '.' . $extension;
-    $filePath = $uploadDir . '/' . $filename;
+    // Create a unique filename
+    $filename = generateUniqueFilename($file['name']);
+    $targetPath = $targetDir . $filename;
     
     // Upload the file
-    if (!move_uploaded_file($file['tmp_name'], $filePath)) {
-        return false;
+    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        return $filename;
     }
     
-    return $filename;
-}
-
-/**
- * Delete a file
- *
- * @param string $filePath The path of the file to delete
- * @return bool True on success, false on failure
- */
-function deleteFile($filePath) {
-    if (file_exists($filePath)) {
-        return unlink($filePath);
-    }
     return false;
 }
 
 /**
- * Log a message to a file
- *
- * @param string $message The message to log
- * @param string $level The log level (info, warning, error)
+ * Get user role name by role ID
+ * @param int $roleId Role ID
+ * @return string Role name
  */
-function logMessage($message, $level = 'info') {
-    $logFile = __DIR__ . '/../logs/' . date('Y-m-d') . '.log';
+function getRoleName($roleId) {
+    global $role_names;
+    return isset($role_names[$roleId]) ? $role_names[$roleId] : 'Unknown';
+}
+
+/**
+ * Get all accommodations or those assigned to an admin
+ * @param int|null $adminId Admin ID or null for all
+ * @return array Accommodations
+ */
+function getAccommodations($adminId = null) {
+    $sql = "SELECT * FROM accommodations";
+    $params = [];
     
-    // Create logs directory if it doesn't exist
-    if (!file_exists(dirname($logFile))) {
-        mkdir(dirname($logFile), 0755, true);
-    }
-    
-    $timestamp = date('Y-m-d H:i:s');
-    $logMessage = "[$timestamp] [$level] $message" . PHP_EOL;
-    
-    file_put_contents($logFile, $logMessage, FILE_APPEND);
-}
-
-/**
- * Redirect to a URL
- *
- * @param string $url The URL to redirect to
- */
-function redirect($url) {
-    header("Location: $url");
-    exit;
-}
-
-/**
- * Display a flash message
- *
- * @param string $message The message to display
- * @param string $type The message type (success, warning, danger, info)
- */
-function setFlashMessage($message, $type = 'info') {
-    $_SESSION['flash_message'] = [
-        'message' => $message,
-        'type' => $type
-    ];
-}
-
-/**
- * Get and clear flash message
- *
- * @return array|null The flash message or null if none exists
- */
-function getFlashMessage() {
-    if (isset($_SESSION['flash_message'])) {
-        $flashMessage = $_SESSION['flash_message'];
-        unset($_SESSION['flash_message']);
-        return $flashMessage;
-    }
-    return null;
-}
-
-/**
- * Display flash message HTML
- */
-function displayFlashMessage() {
-    $flashMessage = getFlashMessage();
-    if ($flashMessage) {
-        echo '<div class="alert alert-' . $flashMessage['type'] . ' alert-dismissible fade show" role="alert">';
-        echo $flashMessage['message'];
-        echo '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
-        echo '</div>';
-    }
-}
-
-/**
- * Check if the current user has a specific role
- *
- * @param string|array $roles The role(s) to check
- * @return bool True if the user has the role, false otherwise
- */
-function hasRole($roles) {
-    if (!isset($_SESSION['user_role'])) {
-        return false;
+    if ($adminId !== null) {
+        $sql .= " WHERE admin_id = ?";
+        $params = [$adminId];
     }
     
-    if (is_array($roles)) {
-        return in_array($_SESSION['user_role'], $roles);
-    } else {
-        return $_SESSION['user_role'] === $roles;
-    }
+    $sql .= " ORDER BY name ASC";
+    
+    return fetchAll($sql, $params);
 }
 
 /**
- * Get accommodation by ID
- *
- * @param PDO $conn Database connection
+ * Get accommodation details by ID
  * @param int $id Accommodation ID
- * @return array|null The accommodation or null if not found
+ * @return array|null Accommodation details
  */
-function getAccommodation($conn, $id) {
-    return fetchRow($conn, "SELECT * FROM accommodations WHERE id = :id", ['id' => $id]);
+function getAccommodationById($id) {
+    return fetchOne("SELECT * FROM accommodations WHERE id = ?", [$id]);
 }
 
 /**
- * Get user by ID
- *
- * @param PDO $conn Database connection
- * @param int $id User ID
- * @return array|null The user or null if not found
+ * Get applications for a specific accommodation or admin
+ * @param int|null $accommodationId Accommodation ID or null
+ * @param int|null $adminId Admin ID or null
+ * @return array Applications
  */
-function getUser($conn, $id) {
-    return fetchRow($conn, "SELECT * FROM users WHERE id = :id", ['id' => $id]);
-}
-
-/**
- * Check if an admin is assigned to an accommodation
- *
- * @param PDO $conn Database connection
- * @param int $userId User ID
- * @param int $accommodationId Accommodation ID
- * @return bool True if assigned, false otherwise
- */
-function isAdminAssignedToAccommodation($conn, $userId, $accommodationId) {
-    $query = "SELECT COUNT(*) FROM accommodation_admins 
-              WHERE user_id = :userId AND accommodation_id = :accommodationId";
-    $params = [
-        'userId' => $userId,
-        'accommodationId' => $accommodationId
-    ];
+function getApplications($accommodationId = null, $adminId = null) {
+    $sql = "SELECT a.*, u.username, u.email, ac.name as accommodation_name 
+            FROM applications a
+            JOIN users u ON a.user_id = u.id
+            JOIN accommodations ac ON a.accommodation_id = ac.id";
     
-    $count = executeQuery($conn, $query, $params)->fetchColumn();
-    return $count > 0;
-}
-
-/**
- * Get accommodations managed by an admin
- *
- * @param PDO $conn Database connection
- * @param int $adminId Admin user ID
- * @return array The accommodations
- */
-function getAdminAccommodations($conn, $adminId) {
-    $query = "SELECT a.* FROM accommodations a
-              JOIN accommodation_admins aa ON a.id = aa.accommodation_id
-              WHERE aa.user_id = :adminId";
-    return fetchAll($conn, $query, ['adminId' => $adminId]);
+    $params = [];
+    $conditions = [];
+    
+    if ($accommodationId !== null) {
+        $conditions[] = "a.accommodation_id = ?";
+        $params[] = $accommodationId;
+    }
+    
+    if ($adminId !== null) {
+        $conditions[] = "ac.admin_id = ?";
+        $params[] = $adminId;
+    }
+    
+    if (!empty($conditions)) {
+        $sql .= " WHERE " . implode(" AND ", $conditions);
+    }
+    
+    $sql .= " ORDER BY a.created_at DESC";
+    
+    return fetchAll($sql, $params);
 }
 
 /**
  * Get application by ID
- *
- * @param PDO $conn Database connection
  * @param int $id Application ID
- * @return array|null The application or null if not found
+ * @return array|null Application details
  */
-function getApplication($conn, $id) {
-    return fetchRow($conn, "SELECT * FROM applications WHERE id = :id", ['id' => $id]);
+function getApplicationById($id) {
+    return fetchOne("SELECT a.*, u.username, u.email, ac.name as accommodation_name 
+                    FROM applications a
+                    JOIN users u ON a.user_id = u.id
+                    JOIN accommodations ac ON a.accommodation_id = ac.id
+                    WHERE a.id = ?", [$id]);
+}
+
+/**
+ * Get applications for a student
+ * @param int $userId User ID
+ * @return array Applications
+ */
+function getStudentApplications($userId) {
+    return fetchAll("SELECT a.*, ac.name as accommodation_name, ac.location, ac.price_per_month 
+                    FROM applications a
+                    JOIN accommodations ac ON a.accommodation_id = ac.id
+                    WHERE a.user_id = ?
+                    ORDER BY a.created_at DESC", [$userId]);
+}
+
+/**
+ * Get status text based on status ID
+ * @param int $statusId Status ID
+ * @return string Status text
+ */
+function getStatusText($statusId) {
+    $statuses = [
+        STATUS_PENDING => 'Pending',
+        STATUS_APPROVED => 'Approved',
+        STATUS_REJECTED => 'Rejected',
+        MAINTENANCE_PENDING => 'Pending',
+        MAINTENANCE_IN_PROGRESS => 'In Progress',
+        MAINTENANCE_COMPLETED => 'Completed'
+    ];
+    
+    return isset($statuses[$statusId]) ? $statuses[$statusId] : 'Unknown';
+}
+
+/**
+ * Get all leases or those for a specific user or accommodation
+ * @param int|null $userId User ID or null
+ * @param int|null $accommodationId Accommodation ID or null
+ * @return array Leases
+ */
+function getLeases($userId = null, $accommodationId = null) {
+    $sql = "SELECT l.*, u.username, u.email, ac.name as accommodation_name, ac.admin_id 
+            FROM leases l
+            JOIN users u ON l.user_id = u.id
+            JOIN accommodations ac ON l.accommodation_id = ac.id";
+    
+    $params = [];
+    $conditions = [];
+    
+    if ($userId !== null) {
+        $conditions[] = "l.user_id = ?";
+        $params[] = $userId;
+    }
+    
+    if ($accommodationId !== null) {
+        $conditions[] = "l.accommodation_id = ?";
+        $params[] = $accommodationId;
+    }
+    
+    if (!empty($conditions)) {
+        $sql .= " WHERE " . implode(" AND ", $conditions);
+    }
+    
+    $sql .= " ORDER BY l.created_at DESC";
+    
+    return fetchAll($sql, $params);
 }
 
 /**
  * Get lease by ID
- *
- * @param PDO $conn Database connection
  * @param int $id Lease ID
- * @return array|null The lease or null if not found
+ * @return array|null Lease details
  */
-function getLease($conn, $id) {
-    return fetchRow($conn, "SELECT * FROM leases WHERE id = :id", ['id' => $id]);
+function getLeaseById($id) {
+    return fetchOne("SELECT l.*, u.username, u.email, ac.name as accommodation_name, ac.location 
+                    FROM leases l
+                    JOIN users u ON l.user_id = u.id
+                    JOIN accommodations ac ON l.accommodation_id = ac.id
+                    WHERE l.id = ?", [$id]);
 }
 
 /**
- * Get invoice by ID
- *
- * @param PDO $conn Database connection
- * @param int $id Invoice ID
- * @return array|null The invoice or null if not found
+ * Get all invoices or those for a specific user or accommodation
+ * @param int|null $userId User ID or null
+ * @param int|null $accommodationId Accommodation ID or null
+ * @return array Invoices
  */
-function getInvoice($conn, $id) {
-    return fetchRow($conn, "SELECT * FROM invoices WHERE id = :id", ['id' => $id]);
+function getInvoices($userId = null, $accommodationId = null) {
+    $sql = "SELECT i.*, u.username, u.email, ac.name as accommodation_name, ac.admin_id 
+            FROM invoices i
+            JOIN users u ON i.user_id = u.id
+            JOIN accommodations ac ON i.accommodation_id = ac.id";
+    
+    $params = [];
+    $conditions = [];
+    
+    if ($userId !== null) {
+        $conditions[] = "i.user_id = ?";
+        $params[] = $userId;
+    }
+    
+    if ($accommodationId !== null) {
+        $conditions[] = "i.accommodation_id = ?";
+        $params[] = $accommodationId;
+    }
+    
+    if (!empty($conditions)) {
+        $sql .= " WHERE " . implode(" AND ", $conditions);
+    }
+    
+    $sql .= " ORDER BY i.created_at DESC";
+    
+    return fetchAll($sql, $params);
+}
+
+/**
+ * Get all maintenance requests or those for a specific user or accommodation
+ * @param int|null $userId User ID or null
+ * @param int|null $accommodationId Accommodation ID or null
+ * @return array Maintenance requests
+ */
+function getMaintenanceRequests($userId = null, $accommodationId = null) {
+    $sql = "SELECT m.*, u.username, u.email, ac.name as accommodation_name, ac.admin_id 
+            FROM maintenance_requests m
+            JOIN users u ON m.user_id = u.id
+            JOIN accommodations ac ON m.accommodation_id = ac.id";
+    
+    $params = [];
+    $conditions = [];
+    
+    if ($userId !== null) {
+        $conditions[] = "m.user_id = ?";
+        $params[] = $userId;
+    }
+    
+    if ($accommodationId !== null) {
+        $conditions[] = "m.accommodation_id = ?";
+        $params[] = $accommodationId;
+    }
+    
+    if (!empty($conditions)) {
+        $sql .= " WHERE " . implode(" AND ", $conditions);
+    }
+    
+    $sql .= " ORDER BY m.created_at DESC";
+    
+    return fetchAll($sql, $params);
 }
 
 /**
  * Get maintenance request by ID
- *
- * @param PDO $conn Database connection
  * @param int $id Maintenance request ID
- * @return array|null The maintenance request or null if not found
+ * @return array|null Maintenance request details
  */
-function getMaintenanceRequest($conn, $id) {
-    return fetchRow($conn, "SELECT * FROM maintenance_requests WHERE id = :id", ['id' => $id]);
+function getMaintenanceRequestById($id) {
+    return fetchOne("SELECT m.*, u.username, u.email, ac.name as accommodation_name 
+                    FROM maintenance_requests m
+                    JOIN users u ON m.user_id = u.id
+                    JOIN accommodations ac ON m.accommodation_id = ac.id
+                    WHERE m.id = ?", [$id]);
 }
 
 /**
- * Check if accommodation has available rooms
- *
- * @param PDO $conn Database connection
+ * Check if an admin is assigned to an accommodation
+ * @param int $adminId Admin ID
  * @param int $accommodationId Accommodation ID
- * @return bool True if rooms are available, false otherwise
+ * @return bool Is assigned
  */
-function hasAvailableRooms($conn, $accommodationId) {
-    $accommodation = getAccommodation($conn, $accommodationId);
-    if (!$accommodation) {
-        return false;
-    }
-    
-    // Count active leases for this accommodation
-    $query = "SELECT COUNT(*) FROM leases 
-              WHERE accommodation_id = :accommodationId 
-              AND end_date >= CURRENT_DATE";
-    $params = ['accommodationId' => $accommodationId];
-    
-    $activeLeases = executeQuery($conn, $query, $params)->fetchColumn();
-    
-    return $accommodation['rooms_available'] > $activeLeases;
+function isAdminAssignedToAccommodation($adminId, $accommodationId) {
+    $result = fetchOne("SELECT id FROM accommodations WHERE id = ? AND admin_id = ?", 
+                       [$accommodationId, $adminId]);
+    return $result !== false;
 }
 
 /**
- * Check if a student has an active lease
- *
- * @param PDO $conn Database connection
- * @param int $studentId Student user ID
- * @return bool True if the student has an active lease, false otherwise
+ * Get all admins
+ * @return array Admins
  */
-function hasActiveLease($conn, $studentId) {
-    $query = "SELECT COUNT(*) FROM leases 
-              WHERE user_id = :studentId 
-              AND end_date >= CURRENT_DATE";
-    $params = ['studentId' => $studentId];
-    
-    $count = executeQuery($conn, $query, $params)->fetchColumn();
-    return $count > 0;
+function getAdmins() {
+    return fetchAll("SELECT * FROM users WHERE role = ? ORDER BY username ASC", [ROLE_ADMIN]);
 }
 
 /**
- * Get active lease for a student
- *
- * @param PDO $conn Database connection
- * @param int $studentId Student user ID
- * @return array|null The active lease or null if none exists
+ * Get admin by ID
+ * @param int $id Admin ID
+ * @return array|null Admin details
  */
-function getActiveLease($conn, $studentId) {
-    $query = "SELECT * FROM leases 
-              WHERE user_id = :studentId 
-              AND end_date >= CURRENT_DATE
-              ORDER BY end_date DESC
-              LIMIT 1";
-    $params = ['studentId' => $studentId];
-    
-    return fetchRow($conn, $query, $params);
+function getAdminById($id) {
+    return fetchOne("SELECT * FROM users WHERE id = ? AND role = ?", [$id, ROLE_ADMIN]);
 }
 
 /**
- * Calculate the total amount due for a student
- *
- * @param PDO $conn Database connection
- * @param int $studentId Student user ID
- * @return float The total amount due
+ * Get accommodations assigned to an admin
+ * @param int $adminId Admin ID
+ * @return array Accommodations
  */
-function calculateTotalDue($conn, $studentId) {
-    $query = "SELECT SUM(i.amount) FROM invoices i
-              JOIN leases l ON i.lease_id = l.id
-              WHERE l.user_id = :studentId
-              AND i.status = :status";
-    $params = [
-        'studentId' => $studentId,
-        'status' => INVOICE_UNPAID
-    ];
-    
-    $total = executeQuery($conn, $query, $params)->fetchColumn();
-    return $total ? $total : 0;
+function getAdminAccommodations($adminId) {
+    return fetchAll("SELECT * FROM accommodations WHERE admin_id = ? ORDER BY name ASC", [$adminId]);
 }
 ?>

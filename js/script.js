@@ -1,307 +1,181 @@
 /**
- * Main JavaScript file for Harambee Student Living Management System
+ * Harambee Student Living Management System
+ * Main JavaScript file
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    
     // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
     // Initialize popovers
-    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    var popoverList = popoverTriggerList.map(function(popoverTriggerEl) {
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function (popoverTriggerEl) {
         return new bootstrap.Popover(popoverTriggerEl);
     });
     
-    // Image upload preview
-    const imageUpload = document.getElementById('imageUpload');
-    const imagePreview = document.getElementById('imagePreview');
+    // File input display filename
+    const fileInputs = document.querySelectorAll('.custom-file-input');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function(e) {
+            const fileName = this.files[0].name;
+            const nextSibling = this.nextElementSibling;
+            nextSibling.innerText = fileName;
+        });
+    });
+    
+    // Image preview for accommodation uploads
+    const imageUpload = document.getElementById('accommodation_image');
+    const imagePreview = document.getElementById('image_preview');
     
     if (imageUpload && imagePreview) {
         imageUpload.addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
                 const reader = new FileReader();
-                
                 reader.addEventListener('load', function() {
-                    imagePreview.innerHTML = `<img src="${this.result}" alt="Preview">`;
+                    imagePreview.src = this.result;
+                    imagePreview.style.display = 'block';
                 });
-                
                 reader.readAsDataURL(file);
             }
         });
     }
     
-    // Auto-hide alerts after 5 seconds
-    const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+    // Toggle password visibility
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordField = document.getElementById('password');
     
-    alerts.forEach(function(alert) {
-        setTimeout(function() {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        }, 5000);
-    });
+    if (togglePassword && passwordField) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+    }
     
-    // Mark all notifications as read
-    const markAllReadBtn = document.querySelector('.mark-all-read');
+    // Maintenance request form validation
+    const maintenanceForm = document.getElementById('maintenance_form');
     
-    if (markAllReadBtn) {
-        markAllReadBtn.addEventListener('click', function(e) {
-            e.preventDefault();
+    if (maintenanceForm) {
+        maintenanceForm.addEventListener('submit', function(event) {
+            const issueField = document.getElementById('issue');
+            const descriptionField = document.getElementById('description');
             
-            fetch('/includes/mark_all_read.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update UI to reflect that all notifications are read
-                    document.querySelectorAll('.notification-item.unread').forEach(item => {
-                        item.classList.remove('unread');
-                    });
-                    
-                    // Remove the notification badge
-                    const badge = document.querySelector('.notification-badge');
-                    if (badge) {
-                        badge.remove();
-                    }
-                }
-            })
-            .catch(error => console.error('Error marking notifications as read:', error));
-        });
-    }
-    
-    // Room availability counter in accommodation details
-    const decrementRoomBtn = document.getElementById('decrementRoom');
-    const incrementRoomBtn = document.getElementById('incrementRoom');
-    const roomsAvailableInput = document.getElementById('roomsAvailable');
-    
-    if (decrementRoomBtn && incrementRoomBtn && roomsAvailableInput) {
-        decrementRoomBtn.addEventListener('click', function() {
-            const currentValue = parseInt(roomsAvailableInput.value);
-            if (currentValue > 0) {
-                roomsAvailableInput.value = currentValue - 1;
-            }
-        });
-        
-        incrementRoomBtn.addEventListener('click', function() {
-            const currentValue = parseInt(roomsAvailableInput.value);
-            roomsAvailableInput.value = currentValue + 1;
-        });
-    }
-    
-    // Form validation for required fields
-    const forms = document.querySelectorAll('.needs-validation');
-    
-    forms.forEach(function(form) {
-        form.addEventListener('submit', function(event) {
-            if (!form.checkValidity()) {
+            if (issueField.value.trim() === '') {
                 event.preventDefault();
-                event.stopPropagation();
+                alert('Please enter the issue title');
+                issueField.focus();
+                return false;
             }
             
-            form.classList.add('was-validated');
-        }, false);
-    });
+            if (descriptionField.value.trim() === '') {
+                event.preventDefault();
+                alert('Please enter a description of the issue');
+                descriptionField.focus();
+                return false;
+            }
+        });
+    }
     
-    // Password visibility toggle
-    const togglePasswordBtns = document.querySelectorAll('.toggle-password');
+    // Application form validation
+    const applicationForm = document.getElementById('application_form');
     
-    togglePasswordBtns.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const passwordInput = document.querySelector(this.getAttribute('data-target'));
+    if (applicationForm) {
+        applicationForm.addEventListener('submit', function(event) {
+            const firstNameField = document.getElementById('first_name');
+            const lastNameField = document.getElementById('last_name');
+            const phoneField = document.getElementById('phone');
             
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                this.innerHTML = '<i class="fas fa-eye-slash"></i>';
-            } else {
-                passwordInput.type = 'password';
-                this.innerHTML = '<i class="fas fa-eye"></i>';
+            if (firstNameField && firstNameField.value.trim() === '') {
+                event.preventDefault();
+                alert('Please enter your first name');
+                firstNameField.focus();
+                return false;
+            }
+            
+            if (lastNameField && lastNameField.value.trim() === '') {
+                event.preventDefault();
+                alert('Please enter your last name');
+                lastNameField.focus();
+                return false;
+            }
+            
+            if (phoneField && phoneField.value.trim() === '') {
+                event.preventDefault();
+                alert('Please enter your phone number');
+                phoneField.focus();
+                return false;
             }
         });
-    });
+    }
     
-    // Date picker initialization
-    const datePickers = document.querySelectorAll('.datepicker');
+    // Print functionality for invoices and leases
+    const printButtons = document.querySelectorAll('.btn-print');
     
-    datePickers.forEach(function(picker) {
-        picker.addEventListener('focus', function(e) {
-            e.target.type = 'date';
-        });
-        
-        picker.addEventListener('blur', function(e) {
-            if (!e.target.value) {
-                e.target.type = 'text';
-            }
-        });
-    });
-    
-    // Confirmation dialogs
-    const confirmBtns = document.querySelectorAll('[data-confirm]');
-    
-    confirmBtns.forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
-    
-    // Print buttons
-    const printBtns = document.querySelectorAll('.btn-print');
-    
-    printBtns.forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+    printButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
             e.preventDefault();
             window.print();
         });
     });
     
-    // Dynamic form fields for maintenance requests
-    const addFieldBtn = document.getElementById('addField');
-    const additionalFieldsContainer = document.getElementById('additionalFields');
+    // Date picker initialization for forms
+    const datePickers = document.querySelectorAll('.datepicker');
     
-    if (addFieldBtn && additionalFieldsContainer) {
-        let fieldCounter = 0;
-        
-        addFieldBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            fieldCounter++;
-            
-            const newField = document.createElement('div');
-            newField.className = 'mb-3 additional-field';
-            newField.innerHTML = `
-                <div class="input-group">
-                    <input type="text" class="form-control" name="additional_fields[${fieldCounter}][key]" placeholder="Field Name">
-                    <input type="text" class="form-control" name="additional_fields[${fieldCounter}][value]" placeholder="Field Value">
-                    <button class="btn btn-outline-danger remove-field" type="button">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            
-            additionalFieldsContainer.appendChild(newField);
-            
-            // Add event listener to the remove button
-            newField.querySelector('.remove-field').addEventListener('click', function() {
-                additionalFieldsContainer.removeChild(newField);
-            });
-        });
-    }
-    
-    // Accommodation search functionality
-    const searchInput = document.getElementById('accommodationSearch');
-    const accommodationCards = document.querySelectorAll('.accommodation-card');
-    
-    if (searchInput && accommodationCards.length > 0) {
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            
-            accommodationCards.forEach(function(card) {
-                const accommodationName = card.querySelector('.card-title').textContent.toLowerCase();
-                const accommodationAddress = card.querySelector('.accommodation-address').textContent.toLowerCase();
-                
-                if (accommodationName.includes(searchTerm) || accommodationAddress.includes(searchTerm)) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        });
-    }
-    
-    // File upload validation
-    const fileInputs = document.querySelectorAll('input[type="file"]');
-    
-    fileInputs.forEach(function(input) {
+    datePickers.forEach(input => {
+        // We're using the browser's built-in date picker
+        // This is just to ensure proper formatting
         input.addEventListener('change', function() {
-            const file = this.files[0];
-            const maxSize = this.getAttribute('data-max-size') || 5242880; // 5MB default
-            const allowedTypes = this.getAttribute('data-allowed-types') ? this.getAttribute('data-allowed-types').split(',') : ['image/jpeg', 'image/png', 'image/gif'];
-            
-            if (file) {
-                // Check file size
-                if (file.size > maxSize) {
-                    alert('File is too large. Maximum size is ' + (maxSize / 1048576) + 'MB.');
-                    this.value = '';
-                    return;
-                }
-                
-                // Check file type
-                if (!allowedTypes.includes(file.type)) {
-                    alert('Invalid file type. Allowed types are: ' + allowedTypes.join(', '));
-                    this.value = '';
-                    return;
-                }
+            const date = new Date(this.value);
+            if (!isNaN(date.getTime())) {
+                const formattedDate = date.toISOString().split('T')[0];
+                this.value = formattedDate;
             }
         });
     });
+    
+    // Bulk notification selection
+    const selectAllCheckbox = document.getElementById('select_all');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.recipient-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+    
+    // Confirmation dialogs
+    const confirmActions = document.querySelectorAll('[data-confirm]');
+    
+    confirmActions.forEach(element => {
+        element.addEventListener('click', function(e) {
+            const message = this.getAttribute('data-confirm');
+            if (!confirm(message)) {
+                e.preventDefault();
+            }
+        });
+    });
+    
+    // Auto calculate invoice amounts based on rent and duration
+    const rentField = document.getElementById('monthly_rent');
+    const durationField = document.getElementById('duration');
+    const totalField = document.getElementById('total_amount');
+    
+    if (rentField && durationField && totalField) {
+        const calculateTotal = function() {
+            const rent = parseFloat(rentField.value) || 0;
+            const duration = parseInt(durationField.value) || 0;
+            const total = rent * duration;
+            totalField.value = total.toFixed(2);
+        };
+        
+        rentField.addEventListener('input', calculateTotal);
+        durationField.addEventListener('input', calculateTotal);
+    }
 });
-
-/**
- * Format a number as currency
- * 
- * @param {number} amount - The amount to format
- * @param {string} currencySymbol - The currency symbol to use
- * @returns {string} The formatted currency string
- */
-function formatCurrency(amount, currencySymbol = 'R') {
-    return currencySymbol + ' ' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-}
-
-/**
- * Format a date string
- * 
- * @param {string} dateString - The date string to format
- * @param {string} format - The format to use (default: 'long')
- * @returns {string} The formatted date string
- */
-function formatDate(dateString, format = 'long') {
-    const date = new Date(dateString);
-    
-    if (isNaN(date.getTime())) {
-        return dateString;
-    }
-    
-    if (format === 'long') {
-        return date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
-    } else if (format === 'short') {
-        return date.toLocaleDateString('en-ZA');
-    } else if (format === 'datetime') {
-        return date.toLocaleDateString('en-ZA') + ' ' + date.toLocaleTimeString('en-ZA');
-    }
-    
-    return dateString;
-}
-
-/**
- * Validate an email address
- * 
- * @param {string} email - The email address to validate
- * @returns {boolean} True if valid, false otherwise
- */
-function isValidEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-}
-
-/**
- * Validate a phone number
- * 
- * @param {string} phone - The phone number to validate
- * @returns {boolean} True if valid, false otherwise
- */
-function isValidPhone(phone) {
-    // Remove non-digit characters
-    const phoneDigits = phone.replace(/\D/g, '');
-    
-    // Check if it has 10-15 digits
-    return /^[0-9]{10,15}$/.test(phoneDigits);
-}

@@ -1,58 +1,34 @@
-/* 
- * Custom styles for Harambee Student Living Management System
- */
+/* Custom Styles for Harambee Student Living Management System */
 
-/* Global Styles */
+/* General Styles */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #333;
     background-color: #f8f9fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
-a {
-    color: #007bff;
-    text-decoration: none;
+/* Sticky Footer */
+footer {
+    margin-top: auto;
 }
 
-a:hover {
-    color: #0056b3;
-    text-decoration: underline;
+/* Main Container */
+.container {
+    padding-top: 20px;
+    padding-bottom: 20px;
 }
 
-/* Header and Navigation */
-.navbar {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.navbar-brand {
-    font-weight: bold;
-}
-
-/* Main Content */
-.page-header {
-    margin-bottom: 30px;
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 15px;
-}
-
-.page-title {
-    font-size: 1.8rem;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 0;
-}
-
-/* Cards */
+/* Card Styles */
 .card {
-    border-radius: 10px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-    transition: transform 0.3s ease;
 }
 
-.card:hover {
-    transform: translateY(-5px);
+.card-title {
+    color: #1a5276;
 }
 
 .card-img-top {
@@ -60,47 +36,51 @@ a:hover {
     object-fit: cover;
 }
 
-.card-title {
-    font-weight: bold;
-    color: #333;
+/* Dashboard Cards */
+.dashboard-card {
+    text-align: center;
+    transition: transform 0.3s;
 }
 
-.card-body {
-    padding: 1.5rem;
+.dashboard-card:hover {
+    transform: translateY(-5px);
 }
 
-.card-footer {
-    background-color: rgba(0, 0, 0, 0.03);
-    padding: 1rem 1.5rem;
+.dashboard-card .card-body {
+    padding: 2rem 1rem;
 }
 
-/* Accommodation Card */
-.accommodation-card .badge {
-    font-size: 0.9rem;
-    padding: 0.5rem;
-    margin-right: 0.5rem;
+.dashboard-card .icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #3498db;
+}
+
+/* Accommodation Cards */
+.accommodation-card {
+    height: 100%;
+}
+
+.accommodation-card .card-text {
+    height: 3rem;
+    overflow: hidden;
+}
+
+.accommodation-card .card-footer {
+    background-color: #fff;
+    border-top: none;
 }
 
 .accommodation-price {
-    font-weight: bold;
     font-size: 1.2rem;
-    color: #28a745;
+    font-weight: bold;
+    color: #2980b9;
 }
 
-.accommodation-features {
-    margin: 15px 0;
-}
-
-.accommodation-features li {
-    margin-bottom: 5px;
-}
-
-/* Forms */
+/* Form Styles */
 .form-container {
-    background-color: #fff;
-    border-radius: 10px;
-    padding: 30px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 700px;
+    margin: 0 auto;
 }
 
 .form-label {
@@ -108,270 +88,128 @@ a:hover {
 }
 
 .form-control:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+    border-color: #3498db;
+    box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
 }
 
-/* Dashboard */
-.dashboard-stats {
-    margin-bottom: 30px;
-}
-
-.stat-card {
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    background-color: #fff;
-    text-align: center;
-}
-
-.stat-card .stat-icon {
-    font-size: 2.5rem;
-    margin-bottom: 15px;
-}
-
-.stat-card .stat-value {
-    font-size: 2rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.stat-card .stat-label {
-    color: #6c757d;
-    font-size: 1rem;
-}
-
-/* Application Status */
-.status-badge {
-    padding: 0.5rem 0.75rem;
-    border-radius: 50px;
-    font-weight: 500;
-}
-
+/* Application Status Badges */
 .status-pending {
-    background-color: #f8f9fa;
-    color: #6c757d;
-    border: 1px solid #6c757d;
+    background-color: #f39c12;
 }
 
 .status-approved {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #155724;
+    background-color: #2ecc71;
 }
 
 .status-rejected {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #721c24;
+    background-color: #e74c3c;
 }
 
-/* Maintenance Request */
-.priority-badge {
-    padding: 0.5rem 0.75rem;
-    border-radius: 50px;
-    font-weight: 500;
-}
-
-.priority-low {
-    background-color: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #0c5460;
-}
-
-.priority-medium {
-    background-color: #fff3cd;
-    color: #856404;
-    border: 1px solid #856404;
-}
-
-.priority-high {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #721c24;
-}
-
-.priority-emergency {
-    background-color: #dc3545;
-    color: #fff;
-    border: 1px solid #dc3545;
-}
-
-/* Invoice Status */
-.invoice-status {
-    padding: 0.5rem 0.75rem;
-    border-radius: 50px;
-    font-weight: 500;
-}
-
-.invoice-paid {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #155724;
-}
-
-.invoice-unpaid {
-    background-color: #fff3cd;
-    color: #856404;
-    border: 1px solid #856404;
-}
-
-.invoice-overdue {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #721c24;
-}
-
-/* Tables */
-.table {
-    background-color: #fff;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.table th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
+/* Table Styles */
+.table-responsive {
+    overflow-x: auto;
 }
 
 .table-hover tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.05);
+    background-color: rgba(52, 152, 219, 0.1);
 }
 
-/* Footer */
-footer {
-    margin-top: 50px;
+/* Maintenance Status Colors */
+.maintenance-pending {
+    color: #f39c12;
 }
 
-footer a:hover {
-    text-decoration: none;
-    opacity: 0.8;
+.maintenance-in-progress {
+    color: #3498db;
 }
 
-/* Responsive Adjustments */
-@media (max-width: 767.98px) {
+.maintenance-completed {
+    color: #2ecc71;
+}
+
+/* Auth Pages */
+.auth-container {
+    max-width: 450px;
+    margin: 2rem auto;
+}
+
+.auth-container .card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.auth-container .card-header {
+    background-color: #3498db;
+    color: white;
+    text-align: center;
+    border-radius: 1rem 1rem 0 0 !important;
+    padding: 1.5rem;
+}
+
+.auth-container .card-title {
+    margin-bottom: 0;
+    color: white;
+}
+
+.auth-container .card-body {
+    padding: 2rem;
+}
+
+/* Invoice Page */
+.invoice-details dt {
+    font-weight: 700;
+}
+
+.invoice-item {
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.5rem 0;
+}
+
+.invoice-total {
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+/* Print Styles for Invoices and Leases */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .container {
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    body {
+        background-color: #fff;
+    }
+    
+    .card {
+        border: none;
+        box-shadow: none;
+    }
+}
+
+/* Custom Buttons */
+.btn-apply {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-apply:hover {
+    background-color: #2980b9;
+    color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
     .card-img-top {
         height: 150px;
     }
     
-    .form-container {
-        padding: 20px;
-    }
-    
-    .stat-card .stat-icon {
+    .dashboard-card .icon {
         font-size: 2rem;
     }
-    
-    .stat-card .stat-value {
-        font-size: 1.5rem;
-    }
-}
-
-/* Notifications */
-.notification-dropdown {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.notification-item {
-    padding: 10px;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.notification-item:last-child {
-    border-bottom: none;
-}
-
-.notification-item.unread {
-    background-color: rgba(0, 123, 255, 0.05);
-}
-
-.notification-time {
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-/* Login and Registration */
-.auth-container {
-    max-width: 500px;
-    margin: 50px auto;
-}
-
-.auth-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.auth-icon {
-    font-size: 3rem;
-    color: #007bff;
-    margin-bottom: 20px;
-}
-
-.auth-title {
-    font-size: 1.8rem;
-    font-weight: bold;
-}
-
-/* Profile */
-.profile-container {
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.profile-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.profile-avatar {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background-color: #007bff;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.5rem;
-    margin: 0 auto 20px;
-}
-
-/* Image Upload */
-.image-preview {
-    width: 100%;
-    height: 200px;
-    border: 1px solid #dee2e6;
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 15px;
-}
-
-.image-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* PDF Preview */
-.pdf-preview {
-    width: 100%;
-    height: 300px;
-    border: 1px solid #dee2e6;
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 15px;
-}
-
-/* Application Form */
-.application-form-section {
-    margin-bottom: 30px;
-}
-
-.application-form-section h3 {
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #dee2e6;
 }

@@ -1,656 +1,559 @@
 <?php
-$page_title = 'Applications';
-require_once 'include/config.php';
-require_once 'include/db.php';
-require_once 'include/functions.php';
-require_once 'include/auth.php';
-require_once 'include/email_functions.php';
-require_once 'include/sms_functions.php';
+require_once 'includes/config.php';
+require_once 'includes/database.php';
+require_once 'includes/functions.php';
+require_once 'includes/authentication.php';
+require_once 'includes/email.php';
+require_once 'includes/sms.php';
 
-// Require login for this page
-require_login();
+// Require login
+requireLogin();
 
-// Check if viewing a specific application
-$application_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$application = null;
+$error = '';
+$success = '';
 
-if ($application_id > 0) {
-    $application = get_application($application_id);
+// Get requested action and ID
+$action = $_GET['action'] ?? '';
+$applicationId = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$accommodationId = isset($_GET['accommodation_id']) ? intval($_GET['accommodation_id']) : 0;
+
+// Process application approval/rejection
+if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN]) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $appId = intval($_POST['application_id'] ?? 0);
+    $status = intval($_POST['status'] ?? 0);
+    $notes = $_POST['notes'] ?? '';
     
-    // Verify access to this application
-    if ($application) {
-        $accommodation = get_accommodation($application['accommodation_id']);
+    if ($appId && $status) {
+        // Check if admin is authorized to manage this application
+        $application = getApplicationById($appId);
         
-        // Check access rights
-        $has_access = false;
-        if (is_master_admin()) {
-            $has_access = true;
-        } elseif (is_admin() && $accommodation && $accommodation['admin_id'] == get_current_user_id()) {
-            $has_access = true;
-        } elseif (is_student() && $application['student_id'] == get_current_user_id()) {
-            $has_access = true;
-        }
-        
-        if (!$has_access) {
-            set_flash_message('error', 'You do not have permission to view this application.');
-            redirect('applications.php');
+        if ($application) {
+            $canManage = hasRole(ROLE_MASTER_ADMIN) || 
+                         isAdminAssignedToAccommodation($_SESSION['user_id'], $application['accommodation_id']);
+            
+            if ($canManage) {
+                // Update application status
+                update('applications', [
+                    'status' => $status,
+                    'notes' => $notes,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ], 'id', $appId);
+                
+                // Send notification email to student
+                $user = fetchOne("SELECT * FROM users WHERE id = ?", [$application['user_id']]);
+                if ($user) {
+                    sendApplicationStatusEmail(
+                        $user['email'],
+                        $user['username'],
+                        $application['accommodation_name'],
+                        $status
+                    );
+                    
+                    // Send SMS if phone number is available and status is updated
+                    if (!empty($user['phone'])) {
+                        sendApplicationStatusSMS(
+                            $user['phone'],
+                            $user['username'],
+                            $application['accommodation_name'],
+                            $status
+                        );
+                    }
+                }
+                
+                // Create lease if application is approved
+                if ($status == STATUS_APPROVED) {
+                    // Get accommodation details
+                    $accommodation = getAccommodationById($application['accommodation_id']);
+                    
+                    if ($accommodation) {
+                        // Create the lease
+                        $leaseId = insert('leases', [
+                            'user_id' => $application['user_id'],
+                            'accommodation_id' => $application['accommodation_id'],
+                            'start_date' => date('Y-m-d', strtotime('+7 days')),
+                            'end_date' => date('Y-m-d', strtotime('+12 months')),
+                            'monthly_rent' => $accommodation['price_per_month'],
+                            'security_deposit' => $accommodation['price_per_month'],
+                            'created_at' => date('Y-m-d H:i:s')
+                        ]);
+                        
+                        // Notify student about lease
+                        if ($leaseId && $user) {
+                            $lease = getLeaseById($leaseId);
+                            sendLeaseEmail($user['email'], $user['username'], $lease);
+                            
+                            if (!empty($user['phone'])) {
+                                sendLeaseSMS($user['phone'], $user['username'], $lease);
+                            }
+                        }
+                    }
+                }
+                
+                $success = 'Application status updated successfully.';
+            } else {
+                $error = 'You are not authorized to manage this application.';
+            }
+        } else {
+            $error = 'Application not found.';
         }
     } else {
-        set_flash_message('error', 'Application not found.');
-        redirect('applications.php');
+        $error = 'Invalid application data.';
     }
 }
 
-// Handle application actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['approve_application']) && is_admin()) {
-        $application_id = isset($_POST['application_id']) ? (int)$_POST['application_id'] : 0;
-        $application = get_application($application_id);
-        
-        if ($application) {
-            $accommodation = get_accommodation($application['accommodation_id']);
-            
-            // Check if admin has access to this accommodation
-            $has_access = is_master_admin() || ($accommodation && $accommodation['admin_id'] == get_current_user_id());
-            
-            if ($has_access) {
-                // Update application status
-                $query = "UPDATE applications SET status = 'approved', notes = ?, updated_at = datetime('now') WHERE id = ?";
-                $notes = isset($_POST['notes']) ? sanitize_input($_POST['notes']) : '';
-                db_query($query, [$notes, $application_id]);
-                
-                // Decrease available units
-                if ($accommodation['available_units'] > 0) {
-                    $query = "UPDATE accommodations SET available_units = available_units - 1 WHERE id = ? AND available_units > 0";
-                    db_query($query, [$accommodation['id']]);
-                }
-                
-                // Create notification for student
-                create_notification(
-                    $application['student_id'],
-                    'Application Approved',
-                    'Your application for ' . $accommodation['name'] . ' has been approved!',
-                    'success'
-                );
-                
-                // Send email notification
-                send_application_status_email($application_id, 'approved');
-                
-                // Send SMS notification if enabled
-                if (TWILIO_ENABLED) {
-                    send_application_status_sms($application_id, 'approved');
-                }
-                
-                // Set success message
-                set_flash_message('success', 'Application approved successfully.');
-                redirect('applications.php?id=' . $application_id);
-            } else {
-                set_flash_message('error', 'You do not have permission to approve this application.');
-                redirect('applications.php');
-            }
-        } else {
-            set_flash_message('error', 'Application not found.');
-            redirect('applications.php');
-        }
-    } elseif (isset($_POST['reject_application']) && is_admin()) {
-        $application_id = isset($_POST['application_id']) ? (int)$_POST['application_id'] : 0;
-        $application = get_application($application_id);
-        
-        if ($application) {
-            $accommodation = get_accommodation($application['accommodation_id']);
-            
-            // Check if admin has access to this accommodation
-            $has_access = is_master_admin() || ($accommodation && $accommodation['admin_id'] == get_current_user_id());
-            
-            if ($has_access) {
-                // Update application status
-                $query = "UPDATE applications SET status = 'rejected', notes = ?, updated_at = datetime('now') WHERE id = ?";
-                $notes = isset($_POST['notes']) ? sanitize_input($_POST['notes']) : '';
-                db_query($query, [$notes, $application_id]);
-                
-                // Create notification for student
-                create_notification(
-                    $application['student_id'],
-                    'Application Rejected',
-                    'Your application for ' . $accommodation['name'] . ' has been rejected.',
-                    'error'
-                );
-                
-                // Send email notification
-                send_application_status_email($application_id, 'rejected');
-                
-                // Send SMS notification if enabled
-                if (TWILIO_ENABLED) {
-                    send_application_status_sms($application_id, 'rejected');
-                }
-                
-                // Set success message
-                set_flash_message('success', 'Application rejected successfully.');
-                redirect('applications.php?id=' . $application_id);
-            } else {
-                set_flash_message('error', 'You do not have permission to reject this application.');
-                redirect('applications.php');
-            }
-        } else {
-            set_flash_message('error', 'Application not found.');
-            redirect('applications.php');
-        }
-    } elseif (isset($_POST['create_lease']) && is_admin()) {
-        $application_id = isset($_POST['application_id']) ? (int)$_POST['application_id'] : 0;
-        $application = get_application($application_id);
-        
-        if ($application && $application['status'] === 'approved') {
-            $accommodation = get_accommodation($application['accommodation_id']);
-            
-            // Check if admin has access to this accommodation
-            $has_access = is_master_admin() || ($accommodation && $accommodation['admin_id'] == get_current_user_id());
-            
-            if ($has_access) {
-                // Get lease details from form
-                $start_date = isset($_POST['start_date']) ? sanitize_input($_POST['start_date']) : '';
-                $end_date = isset($_POST['end_date']) ? sanitize_input($_POST['end_date']) : '';
-                $monthly_rent = isset($_POST['monthly_rent']) ? (float)$_POST['monthly_rent'] : $accommodation['price_per_month'];
-                
-                // Validate dates
-                if (empty($start_date) || empty($end_date) || strtotime($start_date) >= strtotime($end_date)) {
-                    set_flash_message('error', 'Invalid lease dates. End date must be after start date.');
-                    redirect('applications.php?id=' . $application_id);
-                }
-                
-                // Create lease
-                $query = "INSERT INTO leases (student_id, accommodation_id, start_date, end_date, monthly_rent, status, created_at) 
-                          VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))";
-                db_query($query, [
-                    $application['student_id'], $application['accommodation_id'], 
-                    $start_date, $end_date, $monthly_rent
-                ]);
-                
-                $lease_id = db_last_insert_id();
-                
-                // Create notification for student
-                create_notification(
-                    $application['student_id'],
-                    'Lease Agreement Ready',
-                    'Your lease agreement for ' . $accommodation['name'] . ' is ready for signature.',
-                    'info'
-                );
-                
-                // Send email notification
-                send_lease_notification_email($lease_id);
-                
-                // Send SMS notification if enabled
-                if (TWILIO_ENABLED) {
-                    send_lease_notification_sms($lease_id);
-                }
-                
-                // Set success message
-                set_flash_message('success', 'Lease created successfully.');
-                redirect('leases.php?id=' . $lease_id);
-            } else {
-                set_flash_message('error', 'You do not have permission to create a lease for this application.');
-                redirect('applications.php');
-            }
-        } else {
-            set_flash_message('error', 'Invalid application or application not approved.');
-            redirect('applications.php');
-        }
-    }
-}
-
-// Get applications based on user role
-$applications = [];
-if (is_master_admin()) {
-    $applications = get_all_applications();
-} elseif (is_admin()) {
-    // Get admin's accommodations
-    $admin_accommodations = get_admin_accommodations(get_current_user_id());
-    $applications = [];
+// Process new application submission
+if (hasRole(ROLE_STUDENT) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])) {
+    $accId = intval($_POST['accommodation_id'] ?? 0);
     
-    foreach ($admin_accommodations as $accommodation) {
-        $accommodation_applications = get_accommodation_applications($accommodation['id']);
-        $applications = array_merge($applications, $accommodation_applications);
+    if ($accId) {
+        // Check if student already has a pending application for this accommodation
+        $existingApplication = fetchOne(
+            "SELECT id FROM applications WHERE user_id = ? AND accommodation_id = ? AND status = ?",
+            [$_SESSION['user_id'], $accId, STATUS_PENDING]
+        );
+        
+        if ($existingApplication) {
+            $error = 'You already have a pending application for this accommodation.';
+        } else {
+            // Create new application
+            $applicationId = insert('applications', [
+                'user_id' => $_SESSION['user_id'],
+                'accommodation_id' => $accId,
+                'status' => STATUS_PENDING,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            if ($applicationId) {
+                $success = 'Your application has been submitted successfully.';
+                
+                // Update student profile if additional data is provided
+                if (!empty($_POST['first_name']) && !empty($_POST['last_name'])) {
+                    update('users', [
+                        'first_name' => $_POST['first_name'],
+                        'last_name' => $_POST['last_name'],
+                        'phone' => $_POST['phone'] ?? ''
+                    ], 'id', $_SESSION['user_id']);
+                    
+                    // Create or update student profile
+                    $studentProfile = fetchOne("SELECT id FROM student_profiles WHERE user_id = ?", [$_SESSION['user_id']]);
+                    
+                    $profileData = [
+                        'student_number' => $_POST['student_number'] ?? '',
+                        'date_of_birth' => $_POST['date_of_birth'] ?? null,
+                        'gender' => $_POST['gender'] ?? '',
+                        'id_number' => $_POST['id_number'] ?? '',
+                        'address' => $_POST['address'] ?? '',
+                        'emergency_contact_name' => $_POST['emergency_contact_name'] ?? '',
+                        'emergency_contact_phone' => $_POST['emergency_contact_phone'] ?? ''
+                    ];
+                    
+                    if ($studentProfile) {
+                        update('student_profiles', $profileData, 'user_id', $_SESSION['user_id']);
+                    } else {
+                        $profileData['user_id'] = $_SESSION['user_id'];
+                        $profileData['created_at'] = date('Y-m-d H:i:s');
+                        insert('student_profiles', $profileData);
+                    }
+                }
+                
+                // Redirect to view the application
+                header('Location: applications.php?id=' . $applicationId);
+                exit;
+            } else {
+                $error = 'Failed to submit application. Please try again.';
+            }
+        }
+    } else {
+        $error = 'Invalid accommodation selected.';
     }
-} elseif (is_student()) {
-    $applications = get_student_applications(get_current_user_id());
 }
 
-// Include header
-include 'include/header.php';
+// Get application data based on role and context
+if ($applicationId) {
+    // View specific application
+    $application = getApplicationById($applicationId);
+    
+    if (!$application) {
+        header('Location: applications.php');
+        exit;
+    }
+    
+    // Check permission to view this application
+    $canView = false;
+    
+    if (hasRole(ROLE_STUDENT)) {
+        $canView = $application['user_id'] == $_SESSION['user_id'];
+    } elseif (hasRole(ROLE_ADMIN)) {
+        $canView = isAdminAssignedToAccommodation($_SESSION['user_id'], $application['accommodation_id']);
+    } elseif (hasRole(ROLE_MASTER_ADMIN)) {
+        $canView = true;
+    }
+    
+    if (!$canView) {
+        header('Location: applications.php');
+        exit;
+    }
+} elseif ($accommodationId) {
+    // New application form
+    $accommodation = getAccommodationById($accommodationId);
+    
+    if (!$accommodation) {
+        header('Location: accommodations.php');
+        exit;
+    }
+    
+    // If user is admin, redirect to applications list
+    if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN])) {
+        header('Location: applications.php');
+        exit;
+    }
+    
+    // Get user profile data
+    $user = getCurrentUser();
+    $studentProfile = fetchOne("SELECT * FROM student_profiles WHERE user_id = ?", [$_SESSION['user_id']]);
+} else {
+    // Applications list
+    if (hasRole(ROLE_MASTER_ADMIN)) {
+        $applications = getApplications();
+    } elseif (hasRole(ROLE_ADMIN)) {
+        $adminId = $_SESSION['user_id'];
+        $applications = getApplications(null, $adminId);
+    } else {
+        $applications = getStudentApplications($_SESSION['user_id']);
+    }
+}
 
-// Include navbar
-include 'include/navbar.php';
+include 'includes/header.php';
 ?>
 
-<div class="container mt-4">
-    <?php if ($application): ?>
-        <!-- Single Application View -->
+<div class="container">
+    <?php if (!empty($error)): ?>
+        <div class="alert alert-danger"><?= $error ?></div>
+    <?php endif; ?>
+    
+    <?php if (!empty($success)): ?>
+        <div class="alert alert-success"><?= $success ?></div>
+    <?php endif; ?>
+    
+    <?php if ($applicationId && $application): ?>
+        <!-- View Single Application -->
         <div class="row mb-4">
             <div class="col-md-8">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="<?= hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN]) ? 'admin.php' : 'dashboard.php' ?>">Dashboard</a></li>
                         <li class="breadcrumb-item"><a href="applications.php">Applications</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Application #<?php echo $application['id']; ?></li>
+                        <li class="breadcrumb-item active" aria-current="page">Application #<?= $application['id'] ?></li>
                     </ol>
                 </nav>
-                <h1 class="mb-3">Application #<?php echo $application['id']; ?></h1>
+                <h1>Application Details</h1>
             </div>
         </div>
-        
-        <?php 
-        // Get additional details
-        $student = get_user($application['student_id']);
-        $accommodation = get_accommodation($application['accommodation_id']);
-        ?>
         
         <div class="row">
             <div class="col-md-8">
                 <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Application Details</h5>
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Application #<?= $application['id'] ?></h5>
                     </div>
                     <div class="card-body">
-                        <div class="row mb-4">
+                        <div class="row mb-3">
                             <div class="col-md-6">
                                 <h6>Status</h6>
-                                <span class="badge <?php echo get_badge_class($application['status'], 'application'); ?> fs-6">
-                                    <?php echo format_application_status($application['status']); ?>
-                                </span>
+                                <?php if ($application['status'] == STATUS_PENDING): ?>
+                                    <span class="badge bg-warning">Pending</span>
+                                <?php elseif ($application['status'] == STATUS_APPROVED): ?>
+                                    <span class="badge bg-success">Approved</span>
+                                <?php elseif ($application['status'] == STATUS_REJECTED): ?>
+                                    <span class="badge bg-danger">Rejected</span>
+                                <?php endif; ?>
                             </div>
                             <div class="col-md-6">
-                                <h6>Application Date</h6>
-                                <p><?php echo format_date($application['created_at']); ?></p>
+                                <h6>Applied On</h6>
+                                <p><?= formatDate($application['created_at']) ?></p>
                             </div>
                         </div>
                         
                         <h6>Accommodation</h6>
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-8">
-                                        <h5><?php echo $accommodation['name']; ?></h5>
-                                        <p class="text-muted mb-2">
-                                            <i class="fas fa-map-marker-alt me-2"></i><?php echo $accommodation['location']; ?>
-                                        </p>
-                                        <p class="mb-2">
-                                            <span class="badge bg-primary"><?php echo format_currency($accommodation['price_per_month']); ?> /month</span>
-                                        </p>
-                                    </div>
-                                    <div class="col-md-4 text-end">
-                                        <a href="accommodations.php?id=<?php echo $accommodation['id']; ?>" class="btn btn-outline-primary btn-sm">
-                                            <i class="fas fa-building me-2"></i>View Accommodation
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <p><?= $application['accommodation_name'] ?></p>
                         
-                        <?php if (is_admin()): ?>
-                            <h6>Student Information</h6>
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <p><strong>Name:</strong> <?php echo $student['full_name']; ?></p>
-                                            <p><strong>Email:</strong> <?php echo $student['email']; ?></p>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <p><strong>Phone:</strong> <?php echo $student['phone_number'] ?: 'Not provided'; ?></p>
-                                            <p><strong>Username:</strong> <?php echo $student['username']; ?></p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <?php if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN])): ?>
+                            <h6>Student</h6>
+                            <p><?= $application['username'] ?> (<?= $application['email'] ?>)</p>
                         <?php endif; ?>
                         
                         <?php if (!empty($application['notes'])): ?>
                             <h6>Notes</h6>
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <p><?php echo nl2br($application['notes']); ?></p>
+                            <p><?= nl2br($application['notes']) ?></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <?php if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN]) && $application['status'] == STATUS_PENDING): ?>
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Update Application Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="applications.php">
+                                <input type="hidden" name="application_id" value="<?= $application['id'] ?>">
+                                <input type="hidden" name="action" value="update_status">
+                                
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select class="form-select" id="status" name="status" required>
+                                        <option value="">Select Status</option>
+                                        <option value="<?= STATUS_APPROVED ?>">Approve</option>
+                                        <option value="<?= STATUS_REJECTED ?>">Reject</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="notes" class="form-label">Notes</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="3"><?= $application['notes'] ?></textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">Update Status</button>
+                            </form>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Accommodation Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6><?= $application['accommodation_name'] ?></h6>
+                        <p><i class="fas fa-map-marker-alt"></i> <?= fetchOne("SELECT location FROM accommodations WHERE id = ?", [$application['accommodation_id']])['location'] ?></p>
+                        <p><i class="fas fa-money-bill-wave"></i> <?= formatCurrency(fetchOne("SELECT price_per_month FROM accommodations WHERE id = ?", [$application['accommodation_id']])['price_per_month']) ?> / month</p>
+                        
+                        <a href="accommodations.php?id=<?= $application['accommodation_id'] ?>" class="btn btn-outline-primary">View Accommodation</a>
+                    </div>
+                </div>
+                
+                <?php if ($application['status'] == STATUS_APPROVED): ?>
+                    <?php 
+                    $lease = fetchOne("SELECT id FROM leases WHERE user_id = ? AND accommodation_id = ?", 
+                                     [$application['user_id'], $application['accommodation_id']]);
+                    if ($lease): 
+                    ?>
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">Lease Created</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>A lease has been created for this application.</p>
+                                <a href="leases.php?id=<?= $lease['id'] ?>" class="btn btn-outline-success">View Lease</a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+    <?php elseif ($accommodationId && $accommodation && hasRole(ROLE_STUDENT)): ?>
+        <!-- New Application Form -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="dashboard.php">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="accommodations.php">Accommodations</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Apply</li>
+                    </ol>
+                </nav>
+                <h1>Apply for Accommodation</h1>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Application Form</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="applications.php" id="application_form">
+                            <input type="hidden" name="accommodation_id" value="<?= $accommodation['id'] ?>">
+                            <input type="hidden" name="submit_application" value="1">
+                            
+                            <h5 class="mb-3">Personal Information</h5>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="first_name" class="form-label">First Name *</label>
+                                    <input type="text" class="form-control" id="first_name" name="first_name" value="<?= $user['first_name'] ?? '' ?>" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="last_name" class="form-label">Last Name *</label>
+                                    <input type="text" class="form-control" id="last_name" name="last_name" value="<?= $user['last_name'] ?? '' ?>" required>
                                 </div>
                             </div>
-                        <?php endif; ?>
-                        
-                        <?php if ($application['status'] === 'approved' && is_admin()): ?>
-                            <div class="mt-4">
-                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createLeaseModal">
-                                    <i class="fas fa-file-contract me-2"></i>Create Lease Agreement
-                                </button>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" value="<?= $user['email'] ?>" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="phone" class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" value="<?= $user['phone'] ?? '' ?>" required>
+                                </div>
                             </div>
-                        <?php endif; ?>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="date_of_birth" class="form-label">Date of Birth</label>
+                                    <input type="date" class="form-control datepicker" id="date_of_birth" name="date_of_birth" value="<?= $studentProfile['date_of_birth'] ?? '' ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="gender" class="form-label">Gender</label>
+                                    <select class="form-select" id="gender" name="gender">
+                                        <option value="">Select Gender</option>
+                                        <option value="Male" <?= isset($studentProfile['gender']) && $studentProfile['gender'] == 'Male' ? 'selected' : '' ?>>Male</option>
+                                        <option value="Female" <?= isset($studentProfile['gender']) && $studentProfile['gender'] == 'Female' ? 'selected' : '' ?>>Female</option>
+                                        <option value="Other" <?= isset($studentProfile['gender']) && $studentProfile['gender'] == 'Other' ? 'selected' : '' ?>>Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="student_number" class="form-label">Student Number</label>
+                                <input type="text" class="form-control" id="student_number" name="student_number" value="<?= $studentProfile['student_number'] ?? '' ?>">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_number" class="form-label">ID Number / Passport</label>
+                                <input type="text" class="form-control" id="id_number" name="id_number" value="<?= $studentProfile['id_number'] ?? '' ?>">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Current Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="3"><?= $studentProfile['address'] ?? '' ?></textarea>
+                            </div>
+                            
+                            <h5 class="mb-3 mt-4">Emergency Contact</h5>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="emergency_contact_name" class="form-label">Contact Name</label>
+                                    <input type="text" class="form-control" id="emergency_contact_name" name="emergency_contact_name" value="<?= $studentProfile['emergency_contact_name'] ?? '' ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="emergency_contact_phone" class="form-label">Contact Phone</label>
+                                    <input type="tel" class="form-control" id="emergency_contact_phone" name="emergency_contact_phone" value="<?= $studentProfile['emergency_contact_phone'] ?? '' ?>">
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">Submit Application</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
             
             <div class="col-md-4">
-                <?php if (is_admin() && $application['status'] === 'pending'): ?>
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="card-title mb-0">Application Actions</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-grid gap-3">
-                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal">
-                                    <i class="fas fa-check-circle me-2"></i>Approve Application
-                                </button>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                                    <i class="fas fa-times-circle me-2"></i>Reject Application
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                <?php elseif ($application['status'] === 'approved'): ?>
-                    <div class="card mb-4 border-success">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="card-title mb-0">Application Approved</h5>
-                        </div>
-                        <div class="card-body">
-                            <p>Your application has been approved! The next step is to sign your lease agreement.</p>
-                            <p>Once you have signed your lease agreement, you'll receive invoices for payment.</p>
-                            <a href="leases.php" class="btn btn-outline-success w-100">
-                                <i class="fas fa-file-contract me-2"></i>View Lease Agreements
-                            </a>
-                        </div>
-                    </div>
-                <?php elseif ($application['status'] === 'rejected'): ?>
-                    <div class="card mb-4 border-danger">
-                        <div class="card-header bg-danger text-white">
-                            <h5 class="card-title mb-0">Application Rejected</h5>
-                        </div>
-                        <div class="card-body">
-                            <p>Unfortunately, your application has been rejected.</p>
-                            <?php if (!empty($application['notes'])): ?>
-                                <p><strong>Reason:</strong> <?php echo $application['notes']; ?></p>
-                            <?php endif; ?>
-                            <p>You can apply for other available accommodations.</p>
-                            <a href="accommodations.php" class="btn btn-outline-primary w-100">
-                                <i class="fas fa-building me-2"></i>Browse Other Accommodations
-                            </a>
-                        </div>
-                    </div>
-                <?php endif; ?>
-                
                 <div class="card">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0">Timeline</h5>
+                        <h5 class="mb-0">Accommodation Details</h5>
                     </div>
                     <div class="card-body">
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item px-0">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0">
-                                        <span class="bg-success rounded-circle d-inline-block" style="width: 10px; height: 10px;"></span>
-                                    </div>
-                                    <div class="ms-3">
-                                        <h6 class="mb-1">Application Submitted</h6>
-                                        <p class="text-muted small mb-0"><?php echo format_date($application['created_at']); ?></p>
-                                    </div>
-                                </div>
-                            </li>
-                            
-                            <?php if ($application['status'] !== 'pending'): ?>
-                                <li class="list-group-item px-0">
-                                    <div class="d-flex">
-                                        <div class="flex-shrink-0">
-                                            <span class="<?php echo $application['status'] === 'approved' ? 'bg-success' : 'bg-danger'; ?> rounded-circle d-inline-block" style="width: 10px; height: 10px;"></span>
-                                        </div>
-                                        <div class="ms-3">
-                                            <h6 class="mb-1">Application <?php echo ucfirst($application['status']); ?></h6>
-                                            <p class="text-muted small mb-0"><?php echo format_date($application['updated_at']); ?></p>
-                                        </div>
-                                    </div>
-                                </li>
-                            <?php endif; ?>
-                            
-                            <?php if ($application['status'] === 'approved'): ?>
-                                <?php 
-                                // Check if lease exists for this application
-                                $query = "SELECT * FROM leases WHERE student_id = ? AND accommodation_id = ? ORDER BY created_at DESC LIMIT 1";
-                                $lease = db_fetch($query, [$application['student_id'], $application['accommodation_id']]);
-                                
-                                if ($lease):
-                                ?>
-                                    <li class="list-group-item px-0">
-                                        <div class="d-flex">
-                                            <div class="flex-shrink-0">
-                                                <span class="bg-info rounded-circle d-inline-block" style="width: 10px; height: 10px;"></span>
-                                            </div>
-                                            <div class="ms-3">
-                                                <h6 class="mb-1">Lease Agreement Created</h6>
-                                                <p class="text-muted small mb-0"><?php echo format_date($lease['created_at']); ?></p>
-                                                <p class="small mb-0">
-                                                    <a href="leases.php?id=<?php echo $lease['id']; ?>">View Lease</a>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    
-                                    <?php if ($lease['status'] !== 'draft' && $lease['status'] !== 'pending'): ?>
-                                        <li class="list-group-item px-0">
-                                            <div class="d-flex">
-                                                <div class="flex-shrink-0">
-                                                    <span class="bg-success rounded-circle d-inline-block" style="width: 10px; height: 10px;"></span>
-                                                </div>
-                                                <div class="ms-3">
-                                                    <h6 class="mb-1">Lease Agreement Signed</h6>
-                                                    <p class="text-muted small mb-0"><?php echo format_date($lease['signed_at']); ?></p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </ul>
+                        <h5 class="card-title"><?= $accommodation['name'] ?></h5>
+                        <?php if (!empty($accommodation['image_path'])): ?>
+                            <img src="uploads/accommodations/<?= $accommodation['image_path'] ?>" class="img-fluid mb-3" alt="<?= $accommodation['name'] ?>">
+                        <?php endif; ?>
+                        <p><i class="fas fa-map-marker-alt"></i> <?= $accommodation['location'] ?></p>
+                        <p><i class="fas fa-money-bill-wave"></i> <?= formatCurrency($accommodation['price_per_month']) ?> / month</p>
+                        <p><i class="fas fa-door-open"></i> <?= $accommodation['rooms_available'] ?> rooms available</p>
+                        
+                        <a href="accommodations.php?id=<?= $accommodation['id'] ?>" class="btn btn-outline-primary">View Details</a>
                     </div>
                 </div>
             </div>
         </div>
         
-        <?php if (is_admin() && $application['status'] === 'pending'): ?>
-            <!-- Approve Application Modal -->
-            <div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header bg-success text-white">
-                            <h5 class="modal-title" id="approveModalLabel">Approve Application</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="post" action="applications.php">
-                            <div class="modal-body">
-                                <input type="hidden" name="application_id" value="<?php echo $application['id']; ?>">
-                                
-                                <p>Are you sure you want to approve this application for <?php echo $student['full_name']; ?>?</p>
-                                
-                                <div class="mb-3">
-                                    <label for="approve_notes" class="form-label">Notes (Optional)</label>
-                                    <textarea class="form-control" id="approve_notes" name="notes" rows="3"></textarea>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="submit" name="approve_application" class="btn btn-success">
-                                    <i class="fas fa-check-circle me-2"></i>Approve Application
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Reject Application Modal -->
-            <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title" id="rejectModalLabel">Reject Application</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="post" action="applications.php">
-                            <div class="modal-body">
-                                <input type="hidden" name="application_id" value="<?php echo $application['id']; ?>">
-                                
-                                <p>Are you sure you want to reject this application for <?php echo $student['full_name']; ?>?</p>
-                                
-                                <div class="mb-3">
-                                    <label for="reject_notes" class="form-label">Reason for Rejection</label>
-                                    <textarea class="form-control" id="reject_notes" name="notes" rows="3" required></textarea>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="submit" name="reject_application" class="btn btn-danger">
-                                    <i class="fas fa-times-circle me-2"></i>Reject Application
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
-        
-        <?php if ($application['status'] === 'approved' && is_admin()): ?>
-            <!-- Create Lease Modal -->
-            <div class="modal fade" id="createLeaseModal" tabindex="-1" aria-labelledby="createLeaseModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title" id="createLeaseModalLabel">Create Lease Agreement</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="post" action="applications.php">
-                            <div class="modal-body">
-                                <input type="hidden" name="application_id" value="<?php echo $application['id']; ?>">
-                                
-                                <div class="mb-3">
-                                    <label for="start_date" class="form-label">Start Date</label>
-                                    <input type="date" class="form-control" id="start_date" name="start_date" required>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="end_date" class="form-label">End Date</label>
-                                    <input type="date" class="form-control" id="end_date" name="end_date" required>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="monthly_rent" class="form-label">Monthly Rent (R)</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" id="monthly_rent" name="monthly_rent" value="<?php echo $accommodation['price_per_month']; ?>" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="submit" name="create_lease" class="btn btn-primary">
-                                    <i class="fas fa-file-contract me-2"></i>Create Lease
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
     <?php else: ?>
-        <!-- Applications List View -->
+        <!-- Applications List -->
         <div class="row mb-4">
-            <div class="col">
-                <h1 class="mb-3"><?php echo $page_title; ?></h1>
-                <?php if (is_student()): ?>
-                    <p class="lead">Manage your accommodation applications and track their status.</p>
-                <?php else: ?>
-                    <p class="lead">Review and manage student accommodation applications.</p>
+            <div class="col-md-8">
+                <h1><?= hasRole(ROLE_STUDENT) ? 'My Applications' : 'Student Applications' ?></h1>
+                <p class="lead">
+                    <?= hasRole(ROLE_STUDENT) ? 'Manage your accommodation applications.' : 'View and manage student applications.' ?>
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <?php if (hasRole(ROLE_STUDENT)): ?>
+                    <a href="accommodations.php" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> New Application
+                    </a>
                 <?php endif; ?>
             </div>
         </div>
         
         <?php if (empty($applications)): ?>
             <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                <?php if (is_student()): ?>
-                    You haven't submitted any applications yet. <a href="accommodations.php">Browse available accommodations</a> to apply.
+                <?php if (hasRole(ROLE_STUDENT)): ?>
+                    <p class="text-center">You haven't made any applications yet. <a href="accommodations.php">Browse accommodations</a> to apply.</p>
                 <?php else: ?>
-                    No applications found.
+                    <p class="text-center">No applications found.</p>
                 <?php endif; ?>
             </div>
         <?php else: ?>
-            <!-- Filter/Search Options -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="searchApplications" placeholder="Search applications...">
-                                <button class="btn btn-outline-secondary" type="button">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <select class="form-select" id="filterStatus">
-                                <option value="">All Statuses</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Applications List -->
             <div class="card">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Application List</h5>
+                    <h5 class="mb-0"><?= hasRole(ROLE_STUDENT) ? 'My Applications' : 'Applications List' ?></h5>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <?php if (is_admin()): ?>
-                                    <th>Student</th>
-                                <?php endif; ?>
-                                <th>Accommodation</th>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($applications as $app): ?>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
                                 <tr>
-                                    <td>#<?php echo $app['id']; ?></td>
-                                    <?php if (is_admin()): ?>
-                                        <td><?php echo $app['full_name']; ?></td>
+                                    <th>ID</th>
+                                    <?php if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN])): ?>
+                                        <th>Student</th>
                                     <?php endif; ?>
-                                    <td>
-                                        <?php if (is_student()): ?>
-                                            <?php echo $app['accommodation_name']; ?>
-                                        <?php else: ?>
-                                            <a href="accommodations.php?id=<?php echo $app['accommodation_id']; ?>">
-                                                <?php echo isset($app['accommodation_name']) ? $app['accommodation_name'] : 'Accommodation #' . $app['accommodation_id']; ?>
-                                            </a>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?php echo format_date($app['created_at']); ?></td>
-                                    <td>
-                                        <span class="badge <?php echo get_badge_class($app['status'], 'application'); ?>">
-                                            <?php echo format_application_status($app['status']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <a href="applications.php?id=<?php echo $app['id']; ?>" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
-                                    </td>
+                                    <th>Accommodation</th>
+                                    <th>Status</th>
+                                    <th>Applied On</th>
+                                    <th>Actions</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($applications as $app): ?>
+                                    <tr>
+                                        <td><?= $app['id'] ?></td>
+                                        <?php if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN])): ?>
+                                            <td><?= $app['username'] ?></td>
+                                        <?php endif; ?>
+                                        <td><?= $app['accommodation_name'] ?></td>
+                                        <td>
+                                            <?php if ($app['status'] == STATUS_PENDING): ?>
+                                                <span class="badge bg-warning">Pending</span>
+                                            <?php elseif ($app['status'] == STATUS_APPROVED): ?>
+                                                <span class="badge bg-success">Approved</span>
+                                            <?php elseif ($app['status'] == STATUS_REJECTED): ?>
+                                                <span class="badge bg-danger">Rejected</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?= formatDate($app['created_at']) ?></td>
+                                        <td>
+                                            <a href="applications.php?id=<?= $app['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         <?php endif; ?>
     <?php endif; ?>
 </div>
 
-<?php
-// Include footer
-include 'include/footer.php';
-?>
+<?php include 'includes/footer.php'; ?>

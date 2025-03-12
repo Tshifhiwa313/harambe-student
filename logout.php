@@ -1,10 +1,11 @@
 <?php
-require_once 'include/config.php';
-require_once 'include/auth.php';
+require_once 'includes/config.php';
+require_once 'includes/authentication.php';
 
 // Log out the user
-logout_user();
+logoutUser();
 
-// Redirect to the login page with a message
-set_flash_message('success', 'You have been successfully logged out.');
-redirect('login.php');
+// Redirect to the home page
+header('Location: index.php');
+exit;
+?>
