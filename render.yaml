@@ -1,21 +1,25 @@
 
 services:
   - type: web
-    name: harambee-housing
+    name: harambe-student
     env: php
+    branch: main
     buildCommand: composer install
     startCommand: vendor/bin/heroku-php-apache2 .
     envVars:
-      - key: PORT
-        value: 8000
       - key: PHP_VERSION
         value: 8.0
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        sync: false
     buildFilter:
       paths:
-      - "**/*.php"
-      - "**/*.json"
-      - "**/*.html"
-      - "**/*.css"
-      - "**/*.js"
+        - "**/*.php"
+        - "**/*.json"
+        - "**/*.html"
+        - "**/*.css"
+        - "**/*.js"
       ignoredPaths:
-      - "pyproject.toml"
+        - "node_modules/"
+        - "tests/"
