@@ -10,3 +10,12 @@ services:
         value: 8000
       - key: PHP_VERSION
         value: 8.0
+    buildFilter:
+      paths:
+      - "**/*.php"
+      - "**/*.json"
+      - "**/*.html"
+      - "**/*.css"
+      - "**/*.js"
+      ignoredPaths:
+      - "pyproject.toml"
