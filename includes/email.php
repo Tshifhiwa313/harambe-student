@@ -9,6 +9,21 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
+// Verify that PHPMailer class exists, if not provide workaround
+if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+    // Simple email function as fallback if PHPMailer isn't available
+    if (!function_exists('simple_email_send')) {
+        function simple_email_send($to, $subject, $message) {
+            $headers = "MIME-Version: 1.0" . "\r\n";
+            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            $headers .= 'From: ' . MAIL_FROM . "\r\n";
+            
+            error_log("Using simple email function as PHPMailer is not available");
+            return mail($to, $subject, $message, $headers);
+        }
+    }
+}
+
 /**
  * Send an email using PHPMailer
  * @param string $to Recipient email
@@ -18,39 +33,56 @@ use PHPMailer\PHPMailer\Exception;
  * @return bool Success status
  */
 function sendEmail($to, $subject, $message, $altMessage = '') {
-    // Create a new PHPMailer instance
-    $mail = new PHPMailer(true);
-    
-    try {
-        // Server settings
-        $mail->isSMTP();
-        $mail->Host = MAIL_HOST;
-        $mail->SMTPAuth = true;
-        $mail->Username = MAIL_USERNAME;
-        $mail->Password = MAIL_PASSWORD;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = MAIL_PORT;
-        
-        // Recipients
-        $mail->setFrom(MAIL_FROM, MAIL_FROM_NAME);
-        $mail->addAddress($to);
-        
-        // Content
-        $mail->isHTML(true);
-        $mail->Subject = $subject;
-        $mail->Body = $message;
-        
-        if (!empty($altMessage)) {
-            $mail->AltBody = $altMessage;
-        } else {
-            $mail->AltBody = strip_tags($message);
+    // Check if PHPMailer class exists
+    if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+        try {
+            // Create a new PHPMailer instance
+            $mail = new PHPMailer(true);
+            
+            // Server settings
+            $mail->isSMTP();
+            $mail->Host = MAIL_HOST;
+            $mail->SMTPAuth = true;
+            $mail->Username = MAIL_USERNAME;
+            $mail->Password = MAIL_PASSWORD;
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = MAIL_PORT;
+            
+            // Recipients
+            $mail->setFrom(MAIL_FROM, MAIL_FROM_NAME);
+            $mail->addAddress($to);
+            
+            // Content
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body = $message;
+            
+            if (!empty($altMessage)) {
+                $mail->AltBody = $altMessage;
+            } else {
+                $mail->AltBody = strip_tags($message);
+            }
+            
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            // Log the error
+            error_log("Email sending failed with PHPMailer: " . (isset($mail) ? $mail->ErrorInfo : $e->getMessage()));
+            
+            // Try fallback method if PHPMailer fails
+            if (function_exists('simple_email_send')) {
+                return simple_email_send($to, $subject, $message);
+            }
+            return false;
+        }
+    } else {
+        // Use fallback method
+        if (function_exists('simple_email_send')) {
+            return simple_email_send($to, $subject, $message);
         }
         
-        $mail->send();
-        return true;
-    } catch (Exception $e) {
-        // Log the error
-        error_log("Email sending failed: {$mail->ErrorInfo}");
+        // Log that email could not be sent
+        error_log("Email could not be sent: PHPMailer not available and fallback method not defined");
         return false;
     }
 }
