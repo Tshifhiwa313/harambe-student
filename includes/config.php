@@ -39,9 +39,9 @@ define('MAIL_FROM', 'admin@example.com');
 define('MAIL_FROM_NAME', APP_NAME);
 
 // Twilio settings for SMS notifications
-define('TWILIO_SID', ''); // Get from environment variable
-define('TWILIO_TOKEN', ''); // Get from environment variable
-define('TWILIO_PHONE', ''); // Get from environment variable
+define('TWILIO_SID', getenv('TWILIO_ACCOUNT_SID') ?: '');
+define('TWILIO_TOKEN', getenv('TWILIO_AUTH_TOKEN') ?: '');
+define('TWILIO_PHONE', getenv('TWILIO_PHONE_NUMBER') ?: '');
 
 // User roles
 define('ROLE_MASTER_ADMIN', 1);

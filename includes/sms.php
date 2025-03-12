@@ -14,37 +14,11 @@ function sendSMS($to, $message) {
         return false;
     }
     
-    // Prepare the request data
-    $data = [
-        'From' => TWILIO_PHONE,
-        'To' => $to,
-        'Body' => $message
-    ];
+    // Include the Python integration script
+    require_once __DIR__ . '/../send_sms.php';
     
-    // Initialize cURL
-    $ch = curl_init();
-    
-    // Set cURL options
-    curl_setopt($ch, CURLOPT_URL, "https://api.twilio.com/2010-04-01/Accounts/" . TWILIO_SID . "/Messages.json");
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-    curl_setopt($ch, CURLOPT_USERPWD, TWILIO_SID . ":" . TWILIO_TOKEN);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    
-    // Execute the request
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
-    // Close cURL
-    curl_close($ch);
-    
-    // Check if the request was successful
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return true;
-    } else {
-        error_log('Twilio API error: ' . $response);
-        return false;
-    }
+    // Use the Python-based Twilio integration
+    return send_twilio_sms($to, $message);
 }
 
 /**
