@@ -3,6 +3,10 @@ require_once 'includes/config.php';
 require_once 'includes/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/authentication.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 
 // Function to check if database is properly set up
 function isDatabaseFullySetup() {
