@@ -1,10 +1,20 @@
-<?php require_once 'config.php'; ?>
+<?php
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Ensure correct path to config.php
+require_once __DIR__ . '/includes/config.php';  // Corrected path
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/auth.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= APP_NAME ?></title>
+    <title><?= defined('APP_NAME') ? APP_NAME : 'Harambee Student Living' ?></title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -32,8 +42,8 @@
                         <a class="nav-link" href="accommodations.php"><i class="fas fa-building"></i> Accommodations</a>
                     </li>
                     
-                    <?php if (isLoggedIn()): ?>
-                        <?php if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN])): ?>
+                    <?php if (function_exists('isLoggedIn') && isLoggedIn()): ?>
+                        <?php if (function_exists('hasRole') && hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN])): ?>
                             <li class="nav-item">
                                 <a class="nav-link" href="admin.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                             </li>
@@ -73,10 +83,10 @@
                 </ul>
                 
                 <ul class="navbar-nav ms-auto">
-                    <?php if (isLoggedIn()): ?>
+                    <?php if (function_exists('isLoggedIn') && isLoggedIn()): ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-user"></i> <?= $_SESSION['username'] ?>
+                                <i class="fas fa-user"></i> <?= $_SESSION['username'] ?? 'User' ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                 <li><a class="dropdown-item" href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
