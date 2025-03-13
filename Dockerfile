@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     && docker-php-ext-install zip pdo pdo_sqlite
 
+# Enable mod_rewrite for Apache
+RUN a2enmod rewrite
+
 # Copy application files
 COPY . /var/www/html
 
@@ -16,8 +19,11 @@ COPY . /var/www/html
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
-# Ensure correct permissions
+# Set proper permissions
 RUN chmod -R 777 /var/www/html/database.sqlite /var/www/html/uploads
+
+# Restart Apache to apply changes
+RUN service apache2 restart
 
 # Expose port 80 and start Apache
 EXPOSE 80
