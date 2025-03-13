@@ -45,7 +45,7 @@ if ($is_production) {
 // Timezone
 date_default_timezone_set('Africa/Johannesburg');
 
-<?php
+
 // Configuration settings for the application
 session_start();
 
