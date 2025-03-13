@@ -52,3 +52,5 @@ ini_set('error_log', 'logs/error.log');
 
 // Time Zone
 date_default_timezone_set('Africa/Johannesburg');
+die("Config file is loading correctly.");
+
