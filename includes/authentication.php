@@ -11,7 +11,7 @@ require_once 'database.php';
  * @param array $userData Additional user data
  * @return int|false User ID or false on failure
  */
-function registerUser($username, $email, $password, $role, $userData = []) {
+function registerNewUser($username, $email, $password, $role, $userData = []) {
     // Check if username or email already exists
     $existingUser = fetchOne("SELECT id FROM users WHERE username = ? OR email = ?", [$username, $email]);
     if ($existingUser) {
