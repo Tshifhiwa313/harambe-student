@@ -3,6 +3,7 @@
 require_once 'config.php';
 require_once 'db.php';
 require_once 'functions.php';
+require_once 'authentication.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
