@@ -4,7 +4,6 @@ require_once 'includes/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/authentication.php';
 require_once 'includes/email.php';
-require_once 'includes/db.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
@@ -65,16 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Username or email already exists';
         }
-    }
-
-    $password = password_hash($password, PASSWORD_BCRYPT);
-    $role = 'student';
-
-    $stmt = $pdo->prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)');
-    if ($stmt->execute([$username, $password, $role])) {
-        echo 'Registration successful!';
-    } else {
-        echo 'Registration failed!';
     }
 }
 
