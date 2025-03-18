@@ -2,6 +2,9 @@
 // Set environment variables based on environment
 $is_production = (getenv('RENDER') == 'true');
 
+// Define SITE_NAME
+if (!defined('SITE_NAME')) define('SITE_NAME', 'Harambee Student Living');  // <-- Add this line
+
 // Database configuration
 if (!defined('DB_TYPE')) define('DB_TYPE', 'sqlite');
 if (!defined('DB_HOST')) define('DB_HOST', '');
