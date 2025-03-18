@@ -3,6 +3,7 @@ require_once 'includes/config.php';
 require_once 'includes/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/authentication.php';
+require_once 'includes/db.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
@@ -21,17 +22,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error = 'Please enter both username and password';
     } else {
-        // Attempt to log in
-        if (loginUser($username, $password)) {
-            // Redirect based on user role
-            if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN])) {
-                header('Location: admin.php');
+        try {
+            $pdo = connectDB(); // Ensure you are using the connectDB function
+            $stmt = $pdo->prepare('SELECT * FROM users WHERE username = ?');
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
+
+            if ($user && password_verify($password, $user['password'])) {
+                session_start();
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['role'] = $user['role'];
+                // Redirect based on user role
+                if (hasRole([ROLE_MASTER_ADMIN, ROLE_ADMIN])) {
+                    header('Location: admin.php');
+                } else {
+                    header('Location: dashboard.php');
+                }
+                exit;
             } else {
-                header('Location: dashboard.php');
+                $error = 'Invalid username or password';
             }
-            exit;
-        } else {
-            $error = 'Invalid username or password';
+        } catch (PDOException $e) {
+            $error = 'Database error: ' . $e->getMessage();
         }
     }
 }
