@@ -1,13 +1,14 @@
-FROM php:8.0-apache
+FROM php:7.4-cli
 WORKDIR /var/www/html
 
 # Install required dependencies
-RUN apt-get update && apt-get install -y \
-    libzip-dev \
-    unzip \
-    sqlite3 \
-    libsqlite3-dev \
-    && docker-php-ext-install zip pdo pdo_sqlite
+RUN apt-get update && \
+    apt-get install -y \
+        libzip-dev \
+        unzip \
+        sqlite3 \
+        libsqlite3-dev && \
+    docker-php-ext-install zip pdo pdo_sqlite
 
 # Enable mod_rewrite for Apache
 RUN a2enmod rewrite
