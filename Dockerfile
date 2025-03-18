@@ -1,4 +1,4 @@
-FROM php:7.4-cli
+FROM php:8.0-apache
 WORKDIR /var/www/html
 
 # Install required dependencies
@@ -22,9 +22,6 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Set proper permissions
 RUN chmod -R 777 /var/www/html/database.sqlite /var/www/html/uploads
-
-# Restart Apache to apply changes
-RUN service apache2 restart
 
 # Expose port 80 and start Apache
 EXPOSE 80
