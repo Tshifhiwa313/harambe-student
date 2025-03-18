@@ -1,6 +1,54 @@
 {
     "packages": [
         {
+            "name": "heroku/heroku-buildpack-php",
+            "version": "v264",
+            "version_normalized": "264.0.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/heroku/heroku-buildpack-php.git",
+                "reference": "48ad41a8a09dbbf372c6f536cbc750e0f5c9db01"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/heroku/heroku-buildpack-php/zipball/48ad41a8a09dbbf372c6f536cbc750e0f5c9db01",
+                "reference": "48ad41a8a09dbbf372c6f536cbc750e0f5c9db01",
+                "shasum": ""
+            },
+            "time": "2025-03-13T23:06:23+00:00",
+            "bin": [
+                "bin/heroku-php-apache2",
+                "bin/heroku-php-nginx"
+            ],
+            "type": "library",
+            "installation-source": "dist",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "David Zuelke",
+                    "email": "dz@heroku.com"
+                }
+            ],
+            "description": "Toolkit for starting a PHP application locally, with or without foreman, using the same config for PHP and Apache2/Nginx as on Heroku",
+            "homepage": "https://github.com/heroku/heroku-buildpack-php",
+            "keywords": [
+                "apache",
+                "apache2",
+                "foreman",
+                "heroku",
+                "nginx",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/heroku/heroku-buildpack-php/issues",
+                "source": "https://github.com/heroku/heroku-buildpack-php/tree/v264"
+            },
+            "install-path": "../heroku/heroku-buildpack-php"
+        },
+        {
             "name": "phpmailer/phpmailer",
             "version": "v6.9.3",
             "version_normalized": "6.9.3.0",
@@ -86,5 +134,7 @@
         }
     ],
     "dev": true,
-    "dev-package-names": []
+    "dev-package-names": [
+        "heroku/heroku-buildpack-php"
+    ]
 }

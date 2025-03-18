@@ -1,23 +1,32 @@
 <?php return array(
     'root' => array(
-        'name' => '__root__',
+        'name' => 'harambee-student/housing-management',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '37f6f4ef5ba5d7c6b172a496b6b8663f07a4bf2e',
-        'type' => 'library',
+        'reference' => 'bacc74230631410eb0c2cb9e1f92ad9bedc6dafc',
+        'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
         'dev' => true,
     ),
     'versions' => array(
-        '__root__' => array(
+        'harambee-student/housing-management' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '37f6f4ef5ba5d7c6b172a496b6b8663f07a4bf2e',
-            'type' => 'library',
+            'reference' => 'bacc74230631410eb0c2cb9e1f92ad9bedc6dafc',
+            'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
             'dev_requirement' => false,
+        ),
+        'heroku/heroku-buildpack-php' => array(
+            'pretty_version' => 'v264',
+            'version' => '264.0.0.0',
+            'reference' => '48ad41a8a09dbbf372c6f536cbc750e0f5c9db01',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../heroku/heroku-buildpack-php',
+            'aliases' => array(),
+            'dev_requirement' => true,
         ),
         'phpmailer/phpmailer' => array(
             'pretty_version' => 'v6.9.3',

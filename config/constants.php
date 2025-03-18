@@ -29,9 +29,15 @@ if (!file_exists(INVOICE_UPLOADS)) {
 }
 
 // User roles
-define('ROLE_MASTER_ADMIN', 'master_admin');
-define('ROLE_ADMIN', 'admin');
-define('ROLE_STUDENT', 'student');
+if (!defined('ROLE_MASTER_ADMIN')) {
+    define('ROLE_MASTER_ADMIN', 'master_admin');
+}
+if (!defined('ROLE_ADMIN')) {
+    define('ROLE_ADMIN', 'admin');
+}
+if (!defined('ROLE_STUDENT')) {
+    define('ROLE_STUDENT', 'student');
+}
 
 // Application statuses
 define('STATUS_PENDING', 'pending');
@@ -56,12 +62,22 @@ define('MAINTENANCE_COMPLETED', 'completed');
 define('MAINTENANCE_CANCELLED', 'cancelled');
 
 // Email settings (for PHPMailer)
-define('MAIL_HOST', 'smtp.gmail.com');
-define('MAIL_PORT', 587);
-define('MAIL_USERNAME', '');  // Set this in production
-define('MAIL_PASSWORD', '');  // Set this in production
+if (!defined('MAIL_HOST')) {
+    define('MAIL_HOST', 'smtp.gmail.com');
+}
+if (!defined('MAIL_PORT')) {
+    define('MAIL_PORT', 587);
+}
+if (!defined('MAIL_USERNAME')) {
+    define('MAIL_USERNAME', '');  // Set this in production
+}
+if (!defined('MAIL_PASSWORD')) {
+    define('MAIL_PASSWORD', '');  // Set this in production
+}
 define('MAIL_FROM_ADDRESS', 'noreply@harambee.com');
-define('MAIL_FROM_NAME', APP_NAME);
+if (!defined('MAIL_FROM_NAME')) {
+    define('MAIL_FROM_NAME', APP_NAME);
+}
 
 // Maximum file upload size in bytes (5MB)
 define('MAX_FILE_SIZE', 5 * 1024 * 1024);

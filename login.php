@@ -1,4 +1,6 @@
 <?php
+include_once __DIR__ . '/config/constants.php';
+
 // Enable error reporting
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -8,7 +10,7 @@ require_once 'includes/config.php';
 require_once 'includes/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/authentication.php';
-require_once 'includes/db.php';
+require_once 'includes/database.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {

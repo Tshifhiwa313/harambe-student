@@ -1,4 +1,7 @@
-    </div><!-- /.container -->
+<?php
+include_once __DIR__ . '/../config/constants.php';
+?>
+</div><!-- /.container -->
     
     <footer class="bg-dark text-white mt-5 py-4">
         <div class="container">

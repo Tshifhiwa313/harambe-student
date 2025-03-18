@@ -4,6 +4,7 @@ require_once 'includes/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/authentication.php';
 require_once 'includes/email.php';
+include 'functions.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
