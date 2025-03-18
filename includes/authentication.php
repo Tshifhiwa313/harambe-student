@@ -1,7 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'database.php';
-
+require_once 'authentication.php';
 /**
  * Register a new user
  * @param string $username Username
