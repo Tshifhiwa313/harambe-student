@@ -1,4 +1,5 @@
 <?php
+require_once 'authentication.php';
 /**
  * Authentication functions
  * 
