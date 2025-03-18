@@ -2,8 +2,9 @@
 // Set environment variables based on environment
 $is_production = (getenv('RENDER') == 'true');
 
-// Define SITE_NAME
-if (!defined('SITE_NAME')) define('SITE_NAME', 'Harambee Student Living');  // <-- Add this line
+// Define SITE_NAME and ROLE_MASTER_ADMIN constants
+if (!defined('SITE_NAME')) define('SITE_NAME', 'Harambee Student Living');
+if (!defined('ROLE_MASTER_ADMIN')) define('ROLE_MASTER_ADMIN', 'master_admin');  // <-- Add this line
 
 // Database configuration
 if (!defined('DB_TYPE')) define('DB_TYPE', 'sqlite');
