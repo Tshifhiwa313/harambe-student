@@ -29,6 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $pdo = connectDB(); // Ensure you are using the connectDB function
+            if (!$pdo) {
+                throw new Exception('Failed to connect to the database.');
+            }
             $stmt = $pdo->prepare('SELECT * FROM users WHERE username = ?');
             $stmt->execute([$username]);
             $user = $stmt->fetch();
@@ -50,6 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } catch (PDOException $e) {
             $error = 'Database error: ' . $e->getMessage();
+        } catch (Exception $e) {
+            $error = 'Error: ' . $e->getMessage();
         }
     }
 }
