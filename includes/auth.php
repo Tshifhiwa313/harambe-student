@@ -62,7 +62,7 @@ function registerUser($conn, $userData) {
  * @param string $password Password
  * @return array|false User data on success, false on failure
  */
-function loginUser($conn, $username, $password) {
+function loginNewUser($conn, $username, $password) {
     $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
     $stmt->bindParam(':username', $username);
     $stmt->execute();
