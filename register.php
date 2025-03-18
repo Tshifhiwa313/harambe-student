@@ -16,54 +16,61 @@ $success = '';
 
 // Process registration form
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $confirm_password = $_POST['confirm_password'] ?? '';
-    $phone = $_POST['phone'] ?? '';
-    $first_name = $_POST['first_name'] ?? '';
-    $last_name = $_POST['last_name'] ?? '';
-    $student_number = $_POST['student_number'] ?? '';
-    $college = $_POST['college'] ?? '';
-    
-    // Validate input
-    if (empty($username) || empty($email) || empty($password) || empty($confirm_password) || empty($student_number) || empty($college)) {
-        $error = 'Please fill all required fields';
-    } elseif ($password !== $confirm_password) {
-        $error = 'Passwords do not match';
-    } elseif (strlen($password) < 6) {
-        $error = 'Password must be at least 6 characters long';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Please enter a valid email address';
-    } else {
-        // Create user data
-        $userData = [
-            'phone' => $phone,
-            'first_name' => $first_name,
-            'last_name' => $last_name,
-            'student_number' => $student_number,
-            'college' => $college
-        ];
+    try {
+        $username = $_POST['username'] ?? '';
+        $email = $_POST['email'] ?? '';
+        $password = $_POST['password'] ?? '';
+        $confirm_password = $_POST['confirm_password'] ?? '';
+        $phone = $_POST['phone'] ?? '';
+        $first_name = $_POST['first_name'] ?? '';
+        $last_name = $_POST['last_name'] ?? '';
+        $student_number = $_POST['student_number'] ?? '';
+        $college = $_POST['college'] ?? '';
+        $date_of_birth = $_POST['date_of_birth'] ?? '';
         
-        // Register the user as a student
-        $userId = registerUser($username, $email, $password, ROLE_STUDENT, $userData);
-        
-        if ($userId) {
-            $success = 'Registration successful! You can now login.';
-            
-            // Try to send welcome email but don't halt registration if it fails
-            try {
-                sendWelcomeEmail($email, $username, $password, ROLE_STUDENT);
-            } catch (Exception $e) {
-                error_log("Failed to send welcome email: " . $e->getMessage());
-                // Continue with registration even if email fails
-            }
-            
-            // Redirect to login page after short delay
-            header('refresh:2;url=login.php');
+        // Validate input
+        if (empty($username) || empty($email) || empty($password) || empty($confirm_password) || empty($student_number) || empty($college) || empty($date_of_birth)) {
+            $error = 'Please fill all required fields';
+        } elseif ($password !== $confirm_password) {
+            $error = 'Passwords do not match';
+        } elseif (strlen($password) < 6) {
+            $error = 'Password must be at least 6 characters long';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Please enter a valid email address';
         } else {
-            $error = 'Username or email already exists';
+            // Create user data
+            $userData = [
+                'phone' => $phone,
+                'first_name' => $first_name,
+                'last_name' => $last_name,
+                'student_number' => $student_number,
+                'college' => $college,
+                'date_of_birth' => $date_of_birth
+            ];
+            
+            // Register the user as a student
+            $userId = registerUser($username, $email, $password, ROLE_STUDENT, $userData);
+            
+            if ($userId) {
+                $success = 'Registration successful! You can now login.';
+                
+                // Try to send welcome email but don't halt registration if it fails
+                try {
+                    sendWelcomeEmail($email, $username, $password, ROLE_STUDENT);
+                } catch (Exception $e) {
+                    error_log("Failed to send welcome email: " . $e->getMessage());
+                    // Continue with registration even if email fails
+                }
+                
+                // Redirect to login page after short delay
+                header('refresh:2;url=login.php');
+            } else {
+                $error = 'Username or email already exists';
+            }
         }
+    } catch (Exception $e) {
+        error_log("Error during registration: " . $e->getMessage());
+        $error = 'An unexpected error occurred. Please try again later.';
     }
 }
 
@@ -151,6 +158,14 @@ include 'includes/header.php';
                             <option value="Durban University of Technology">Durban University of Technology</option>
                             <option value="Other">Other</option>
                         </select>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="date_of_birth" class="form-label">Date of Birth *</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
                     </div>
                 </div>
                 
