@@ -23,6 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone = sanitize($_POST['phone'] ?? '');
     $firstName = sanitize($_POST['first_name'] ?? '');
     $lastName = sanitize($_POST['last_name'] ?? '');
+    $studentNumber = sanitize($_POST['student_number'] ?? '');
+    $college = sanitize($_POST['college'] ?? '');
+    $dateOfBirth = sanitize($_POST['date_of_birth'] ?? '');
     
     // Basic validation
     if (empty($username)) {
@@ -59,16 +62,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Last name is required';
     }
     
+    if (empty($studentNumber)) {
+        $errors[] = 'Student number is required';
+    }
+    
+    if (empty($college)) {
+        $errors[] = 'College is required';
+    }
+    
+    if (empty($dateOfBirth)) {
+        $errors[] = 'Date of birth is required';
+    }
+    
     // Check if username already exists
     $checkUsername = fetchRow($conn, "SELECT id FROM users WHERE username = :username", ['username' => $username]);
     if ($checkUsername) {
         $errors[] = 'Username already exists';
+        error_log("Username check: " . print_r($checkUsername, true)); // Debugging statement
     }
     
     // Check if email already exists
     $checkEmail = fetchRow($conn, "SELECT id FROM users WHERE email = :email", ['email' => $email]);
     if ($checkEmail) {
         $errors[] = 'Email already exists';
+        error_log("Email check: " . print_r($checkEmail, true)); // Debugging statement
     }
     
     // Register user if no validation errors
@@ -80,10 +97,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'phone' => $phone,
             'first_name' => $firstName,
             'last_name' => $lastName,
+            'student_number' => $studentNumber,
+            'college' => $college,
+            'date_of_birth' => $dateOfBirth,
             'role' => ROLE_STUDENT  // All registrations are for students
         ];
         
-        $userId = registerUser($conn, $userData);
+        $userId = registerUser($username, $email, $password, ROLE_STUDENT, $userData);
         
         if ($userId) {
             setFlashMessage('Registration successful! You can now login.', 'success');
@@ -147,6 +167,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="phone" class="form-label">Phone Number (Optional)</label>
                             <input type="tel" class="form-control" id="phone" name="phone" value="<?php echo isset($phone) ? $phone : ''; ?>" placeholder="e.g., +27123456789">
                             <div class="form-text">Enter phone number with country code for SMS notifications.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="student_number" class="form-label">Student Number *</label>
+                            <input type="text" class="form-control" id="student_number" name="student_number" value="<?php echo isset($studentNumber) ? $studentNumber : ''; ?>" required>
+                            <div class="invalid-feedback">
+                                Please enter your student number.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="college" class="form-label">College/Institution *</label>
+                            <select class="form-select" id="college" name="college" required>
+                                <option value="" selected disabled>Select your college/institution</option>
+                                <option value="University of Johannesburg">University of Johannesburg</option>
+                                <!-- Add more options as needed -->
+                            </select>
+                            <div class="invalid-feedback">
+                                Please select your college/institution.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="date_of_birth" class="form-label">Date of Birth *</label>
+                            <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" value="<?php echo isset($dateOfBirth) ? $dateOfBirth : ''; ?>" required>
+                            <div class="invalid-feedback">
+                                Please enter your date of birth.
+                            </div>
                         </div>
                         
                         <div class="mb-3">
